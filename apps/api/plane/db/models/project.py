@@ -208,6 +208,10 @@ class ProjectMemberInvite(ProjectBaseModel):
 
 
 class ProjectMember(ProjectBaseModel):
+    class WorkflowRole(models.TextChoices):
+        APPROVER = "approver", "Approver"
+        CO_WORKER = "co_worker", "Co-worker"
+
     member = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -220,6 +224,7 @@ class ProjectMember(ProjectBaseModel):
     view_props = models.JSONField(default=get_default_props)
     default_props = models.JSONField(default=get_default_props)
     preferences = models.JSONField(default=get_default_preferences)
+    workflow_roles = models.JSONField(default=list, blank=True)
     sort_order = models.FloatField(default=65535)
     is_active = models.BooleanField(default=True)
 

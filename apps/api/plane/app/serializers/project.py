@@ -162,6 +162,19 @@ class ProjectMemberSerializer(BaseSerializer):
         model = ProjectMember
         fields = "__all__"
 
+    def validate_workflow_roles(self, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Workflow roles must be a list")
+
+        valid_roles = {role.value for role in ProjectMember.WorkflowRole}
+        invalid_roles = [role for role in value if role not in valid_roles]
+        if invalid_roles:
+            raise serializers.ValidationError(f"Invalid workflow roles: {invalid_roles}")
+
+        return list(dict.fromkeys(value))
+
 
 class ProjectMemberPreferenceSerializer(BaseSerializer):
     class Meta:
@@ -190,7 +203,7 @@ class ProjectMemberRoleSerializer(DynamicBaseSerializer):
 
     class Meta:
         model = ProjectMember
-        fields = ("id", "role", "member", "project", "original_role", "created_at")
+        fields = ("id", "role", "member", "project", "workflow_roles", "original_role", "created_at")
         read_only_fields = ["original_role", "created_at"]
 
 

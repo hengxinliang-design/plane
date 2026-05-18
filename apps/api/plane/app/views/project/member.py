@@ -18,7 +18,7 @@ from plane.app.serializers import (
 
 from plane.app.permissions import WorkspaceUserPermission
 
-from plane.db.models import Project, ProjectMember, ProjectUserProperty, WorkspaceMember
+from plane.db.models import IssueWorkflowMember, Project, ProjectMember, ProjectUserProperty, WorkspaceMember
 from plane.bgtasks.project_add_user_email_task import project_add_user_email
 from plane.utils.host import base_host
 from plane.app.permissions.base import allow_permission, ROLE
@@ -165,7 +165,9 @@ class ProjectMemberViewSet(BaseViewSet):
             member__member_workspace__is_active=True,
         ).select_related("project", "member", "workspace")
 
-        serializer = ProjectMemberRoleSerializer(project_members, fields=("id", "member", "role"), many=True)
+        serializer = ProjectMemberRoleSerializer(
+            project_members, fields=("id", "member", "role", "workflow_roles"), many=True
+        )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
@@ -198,7 +200,7 @@ class ProjectMemberViewSet(BaseViewSet):
         if requesting_project_member.role > ROLE.GUEST.value:
             serializer = ProjectMemberAdminSerializer(project_member)
         else:
-            serializer = ProjectMemberRoleSerializer(project_member, fields=("id", "member", "role"))
+            serializer = ProjectMemberRoleSerializer(project_member, fields=("id", "member", "role", "workflow_roles"))
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -229,6 +231,21 @@ class ProjectMemberViewSet(BaseViewSet):
             member=request.user,
             is_active=True,
         )
+
+        if "workflow_roles" in request.data:
+            if requested_project_member.role < ROLE.ADMIN.value and not is_workspace_admin:
+                return Response(
+                    {"error": "You do not have permission to update workflow roles"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            if project_member.role >= requested_project_member.role and not is_workspace_admin:
+                return Response(
+                    {
+                        "error": "You cannot update workflow roles for a member with a role equal to or higher than your own"
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         if "role" in request.data:
             # Only Admins can modify roles
@@ -265,6 +282,23 @@ class ProjectMemberViewSet(BaseViewSet):
 
         if serializer.is_valid():
             serializer.save()
+            if "workflow_roles" in request.data:
+                workflow_roles = set(serializer.validated_data.get("workflow_roles", []))
+                stale_role_types = [
+                    role_type
+                    for role_type in [
+                        IssueWorkflowMember.RoleType.APPROVER,
+                        IssueWorkflowMember.RoleType.CO_WORKER,
+                    ]
+                    if role_type not in workflow_roles
+                ]
+                if stale_role_types:
+                    IssueWorkflowMember.objects.filter(
+                        workspace__slug=slug,
+                        project_id=project_id,
+                        member=project_member.member,
+                        role_type__in=stale_role_types,
+                    ).delete()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

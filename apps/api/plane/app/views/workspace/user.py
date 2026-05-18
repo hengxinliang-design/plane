@@ -46,6 +46,7 @@ from plane.db.models import (
     FileAsset,
     IssueLink,
     IssueSubscriber,
+    IssueWorkflowMember,
     Project,
     ProjectMember,
     User,
@@ -63,6 +64,18 @@ from plane.utils.order_queryset import order_issue_queryset
 from plane.utils.paginator import GroupedOffsetPaginator, SubGroupedOffsetPaginator
 from plane.utils.filters import ComplexFilterBackend
 from plane.utils.filters import IssueFilterSet
+
+
+def user_assigned_or_approver_filter(user_id, prefix=""):
+    return (
+        Q(**{f"{prefix}assignees__in": [user_id]}) & Q(**{f"{prefix}issue_assignee__deleted_at__isnull": True})
+    ) | Q(
+        **{
+            f"{prefix}workflow_members__member_id": user_id,
+            f"{prefix}workflow_members__role_type": IssueWorkflowMember.RoleType.APPROVER,
+            f"{prefix}workflow_members__deleted_at__isnull": True,
+        }
+    )
 
 
 class UserLastProjectWithWorkspaceEndpoint(BaseAPIView):
@@ -134,13 +147,21 @@ class WorkspaceUserProfileIssuesEndpoint(BaseAPIView):
 
     def get(self, request, slug, user_id):
         filters = issue_filters(request.query_params, "GET")
+        is_assigned_view = str(request.GET.get("assignees", "")) == str(user_id)
+        if is_assigned_view:
+            filters.pop("assignees__in", None)
+            filters.pop("issue_assignee__deleted_at__isnull", None)
 
         order_by_param = request.GET.get("order_by", "-created_at")
+        relation_filter = (
+            user_assigned_or_approver_filter(user_id)
+            if is_assigned_view
+            else Q(assignees__in=[user_id]) | Q(created_by_id=user_id) | Q(issue_subscribers__subscriber_id=user_id)
+        )
         issue_queryset = Issue.issue_objects.filter(
-            id__in=Issue.issue_objects.filter(
-                Q(assignees__in=[user_id]) | Q(created_by_id=user_id) | Q(issue_subscribers__subscriber_id=user_id),
-                workspace__slug=slug,
-            ).values_list("id", flat=True),
+            id__in=Issue.issue_objects.filter(relation_filter, workspace__slug=slug)
+            .distinct()
+            .values_list("id", flat=True),
             workspace__slug=slug,
             project__project_projectmember__member=request.user,
             project__project_projectmember__is_active=True,
@@ -291,6 +312,7 @@ class WorkspaceUserProfileEndpoint(BaseAPIView):
         user_data = target_workspace_member.member
         projects = []
         if requesting_workspace_member.role >= 15:
+            assigned_or_approver_filter = user_assigned_or_approver_filter(user_id, prefix="project_issue__")
             projects = (
                 Project.objects.filter(
                     workspace__slug=slug,
@@ -311,37 +333,40 @@ class WorkspaceUserProfileEndpoint(BaseAPIView):
                 .annotate(
                     assigned_issues=Count(
                         "project_issue",
-                        filter=Q(
-                            project_issue__assignees__in=[user_id],
+                        filter=assigned_or_approver_filter
+                        & Q(
                             project_issue__archived_at__isnull=True,
                             project_issue__is_draft=False,
                         ),
+                        distinct=True,
                     )
                 )
                 .annotate(
                     completed_issues=Count(
                         "project_issue",
-                        filter=Q(
+                        filter=assigned_or_approver_filter
+                        & Q(
                             project_issue__completed_at__isnull=False,
-                            project_issue__assignees__in=[user_id],
                             project_issue__archived_at__isnull=True,
                             project_issue__is_draft=False,
                         ),
+                        distinct=True,
                     )
                 )
                 .annotate(
                     pending_issues=Count(
                         "project_issue",
-                        filter=Q(
+                        filter=assigned_or_approver_filter
+                        & Q(
                             project_issue__state__group__in=[
                                 "backlog",
                                 "unstarted",
                                 "started",
                             ],
-                            project_issue__assignees__in=[user_id],
                             project_issue__archived_at__isnull=True,
                             project_issue__is_draft=False,
                         ),
+                        distinct=True,
                     )
                 )
                 .values(
@@ -401,10 +426,11 @@ class WorkspaceUserActivityEndpoint(BaseAPIView):
 class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
     def get(self, request, slug, user_id):
         filters = issue_filters(request.query_params, "GET")
+        assigned_or_approver_filter = user_assigned_or_approver_filter(user_id)
 
         state_distribution = (
             Issue.issue_objects.filter(
-                (Q(assignees__in=[user_id]) & Q(issue_assignee__deleted_at__isnull=True)),
+                assigned_or_approver_filter,
                 workspace__slug=slug,
                 project__project_projectmember__member=request.user,
                 project__project_projectmember__is_active=True,
@@ -412,7 +438,7 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
             .filter(**filters)
             .annotate(state_group=F("state__group"))
             .values("state_group")
-            .annotate(state_count=Count("state_group"))
+            .annotate(state_count=Count("id", distinct=True))
             .order_by("state_group")
         )
 
@@ -420,14 +446,14 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
 
         priority_distribution = (
             Issue.issue_objects.filter(
-                (Q(assignees__in=[user_id]) & Q(issue_assignee__deleted_at__isnull=True)),
+                assigned_or_approver_filter,
                 workspace__slug=slug,
                 project__project_projectmember__member=request.user,
                 project__project_projectmember__is_active=True,
             )
             .filter(**filters)
             .values("priority")
-            .annotate(priority_count=Count("priority"))
+            .annotate(priority_count=Count("id", distinct=True))
             .filter(priority_count__gte=1)
             .annotate(
                 priority_order=Case(
@@ -452,36 +478,39 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
 
         assigned_issues_count = (
             Issue.issue_objects.filter(
-                (Q(assignees__in=[user_id]) & Q(issue_assignee__deleted_at__isnull=True)),
+                assigned_or_approver_filter,
                 workspace__slug=slug,
                 project__project_projectmember__member=request.user,
                 project__project_projectmember__is_active=True,
             )
             .filter(**filters)
+            .distinct()
             .count()
         )
 
         pending_issues_count = (
             Issue.issue_objects.filter(
                 ~Q(state__group__in=["completed", "cancelled"]),
-                (Q(assignees__in=[user_id]) & Q(issue_assignee__deleted_at__isnull=True)),
+                assigned_or_approver_filter,
                 workspace__slug=slug,
                 project__project_projectmember__member=request.user,
                 project__project_projectmember__is_active=True,
             )
             .filter(**filters)
+            .distinct()
             .count()
         )
 
         completed_issues_count = (
             Issue.issue_objects.filter(
-                (Q(assignees__in=[user_id]) & Q(issue_assignee__deleted_at__isnull=True)),
+                assigned_or_approver_filter,
                 workspace__slug=slug,
                 state__group="completed",
                 project__project_projectmember__member=request.user,
                 project__project_projectmember__is_active=True,
             )
             .filter(**filters)
+            .distinct()
             .count()
         )
 
@@ -500,14 +529,26 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
         upcoming_cycles = CycleIssue.objects.filter(
             workspace__slug=slug,
             cycle__start_date__gt=timezone.now(),
-            issue__assignees__in=[user_id],
+        ).filter(
+            Q(issue__assignees__in=[user_id])
+            | Q(
+                issue__workflow_members__member_id=user_id,
+                issue__workflow_members__role_type=IssueWorkflowMember.RoleType.APPROVER,
+                issue__workflow_members__deleted_at__isnull=True,
+            )
         ).values("cycle__name", "cycle__id", "cycle__project_id")
 
         present_cycle = CycleIssue.objects.filter(
             workspace__slug=slug,
             cycle__start_date__lt=timezone.now(),
             cycle__end_date__gt=timezone.now(),
-            issue__assignees__in=[user_id],
+        ).filter(
+            Q(issue__assignees__in=[user_id])
+            | Q(
+                issue__workflow_members__member_id=user_id,
+                issue__workflow_members__role_type=IssueWorkflowMember.RoleType.APPROVER,
+                issue__workflow_members__deleted_at__isnull=True,
+            )
         ).values("cycle__name", "cycle__id", "cycle__project_id")
 
         return Response(

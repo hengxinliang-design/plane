@@ -73,6 +73,10 @@ from plane.utils.issue_filters import issue_filters
 from plane.utils.order_queryset import order_issue_queryset
 from plane.utils.paginator import GroupedOffsetPaginator, SubGroupedOffsetPaginator
 from plane.utils.timezone_converter import user_timezone_converter
+from plane.utils.workflow_approval import (
+    record_direct_approval_if_needed,
+    validate_state_transition_or_request_approval,
+)
 
 from .. import BaseAPIView, BaseViewSet
 
@@ -665,9 +669,24 @@ class IssueViewSet(BaseViewSet):
         current_instance = json.dumps(IssueDetailSerializer(issue).data, cls=DjangoJSONEncoder)
 
         requested_data = json.dumps(self.request.data, cls=DjangoJSONEncoder)
+
+        requested_state_id = request.data.get("state_id")
+        previous_state_id = issue.state_id
+        current_site = base_host(request=request, is_app=True)
+
+        approval_response = validate_state_transition_or_request_approval(
+            issue=issue,
+            requested_state_id=requested_state_id,
+            actor=request.user,
+            current_site=current_site,
+        )
+        if approval_response is not None:
+            return approval_response
+
         serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
             serializer.save()
+            record_direct_approval_if_needed(issue, previous_state_id, requested_state_id, request.user, current_site)
             # Check if the update is a migration description update
             is_migration_description_update = skip_activity and is_description_update
             # Log all the updates

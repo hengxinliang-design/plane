@@ -47,6 +47,7 @@ import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
+import { WorkflowMembersProperty } from "./workflow-members-property";
 
 type Props = {
   workspaceSlug: string;
@@ -120,6 +121,14 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                 dropdownArrowClassName="h-3.5 w-3.5 hidden group-hover:inline"
               />
             </SidebarPropertyListItem>
+
+            <WorkflowMembersProperty
+              workspaceSlug={workspaceSlug}
+              projectId={projectId}
+              issueId={issueId}
+              assigneeIds={issue.assignee_ids ?? []}
+              disabled={!isEditable}
+            />
 
             <SidebarPropertyListItem icon={PriorityPropertyIcon} label={t("common.priority")}>
               <PriorityDropdown

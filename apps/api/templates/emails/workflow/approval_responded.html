@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <p>Hello {{ requester_name }},</p>
+    <p>
+      {{ responder_name }} has {{ status }} your approval request for
+      <strong>{{ issue_identifier }}</strong> in {{ project_name }}.
+    </p>
+    <p>
+      <strong>{{ issue_name }}</strong><br />
+      {{ from_state }} &rarr; {{ to_state }}
+    </p>
+    {% if response_message %}
+    <p>Message: {{ response_message }}</p>
+    {% endif %}
+    {% if issue_url %}
+    <p>
+      <a href="{{ issue_url }}">Open work item</a>
+    </p>
+    {% endif %}
+    <p>Workspace: {{ workspace_name }}</p>
+  </body>
+</html>

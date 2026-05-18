@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // hooks
@@ -44,10 +44,18 @@ export const ModuleDropdown = observer(function ModuleDropdown(props: TModuleDro
   const { getModuleById, getProjectModuleIds, fetchModules } = useModule();
   // derived values
   const moduleIds = projectId ? getProjectModuleIds(projectId) : [];
+  const selectedModuleIds = Array.isArray(props.value) ? props.value : props.value ? [props.value] : [];
+  const hasMissingSelectedModuleDetails = selectedModuleIds.some((moduleId) => !getModuleById(moduleId));
 
   const onDropdownOpen = () => {
     if (!moduleIds && projectId && workspaceSlug) fetchModules(workspaceSlug.toString(), projectId);
   };
+
+  useEffect(() => {
+    if (!projectId || !workspaceSlug || !hasMissingSelectedModuleDetails) return;
+
+    fetchModules(workspaceSlug.toString(), projectId);
+  }, [fetchModules, hasMissingSelectedModuleDetails, projectId, workspaceSlug]);
 
   return (
     <ModuleDropdownBase

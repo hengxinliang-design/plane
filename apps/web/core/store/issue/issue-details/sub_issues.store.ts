@@ -47,6 +47,19 @@ export interface IIssueSubIssuesStoreActions {
 
 type TSubIssueHelpersKeys = "issue_visibility" | "preview_loader" | "issue_loader";
 type TSubIssueHelpers = Record<TSubIssueHelpersKeys, string[]>;
+type TSubIssueWithStateGroup = TIssue & { state_group?: TIssue["state__group"] };
+
+const normalizeSubIssueResponse = (subIssues: TIssueSubIssues["sub_issues"] | undefined): TIssue[] => {
+  const issueList = Array.isArray(subIssues) ? subIssues : Object.values(subIssues ?? {}).flat();
+
+  return issueList.map((issue) => {
+    const subIssue = issue as TSubIssueWithStateGroup;
+    return Object.assign({}, subIssue, {
+      state__group: subIssue.state__group ?? subIssue.state_group ?? null,
+    });
+  });
+};
+
 export interface IIssueSubIssuesStore extends IIssueSubIssuesStoreActions {
   // observables
   subIssuesStateDistribution: TIssueSubIssuesStateDistributionMap;
@@ -117,7 +130,12 @@ export class IssueSubIssuesStore implements IIssueSubIssuesStore {
 
   // actions
   setSubIssueHelpers = (parentIssueId: string, key: TSubIssueHelpersKeys, value: string) => {
-    if (!parentIssueId || !key || !value) return;
+    if (!parentIssueId || !key) return;
+
+    if (!value) {
+      set(this.subIssueHelpers, [parentIssueId, key], []);
+      return;
+    }
 
     update(this.subIssueHelpers, [parentIssueId, key], (_subIssueHelpers: string[] = []) => {
       if (_subIssueHelpers.includes(value)) return pull(_subIssueHelpers, value);
@@ -131,7 +149,7 @@ export class IssueSubIssuesStore implements IIssueSubIssuesStore {
 
     const subIssuesStateDistribution = response?.state_distribution ?? {};
 
-    const issueList = (response.sub_issues ?? []) as TIssue[];
+    const issueList = normalizeSubIssueResponse(response.sub_issues);
 
     this.rootIssueDetailStore.rootIssueStore.issues.addIssue(issueList);
 
@@ -167,7 +185,7 @@ export class IssueSubIssuesStore implements IIssueSubIssuesStore {
     });
 
     const subIssuesStateDistribution = response?.state_distribution;
-    const subIssues = response.sub_issues as TIssue[];
+    const subIssues = normalizeSubIssueResponse(response.sub_issues);
 
     // fetch other issues states and members when sub-issues are from different project
     if (subIssues && subIssues.length > 0) {

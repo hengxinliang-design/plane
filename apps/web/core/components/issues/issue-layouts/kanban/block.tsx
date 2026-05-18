@@ -264,7 +264,7 @@ export const KanbanIssueBlock = observer(function KanbanIssueBlock(props: IssueB
               type: TOAST_TYPE.WARNING,
               title: "Cannot move work item",
               message: !canEditIssueProperties
-                ? "You are not allowed to move this work item"
+                ? "您的操作超出权限限制范围"
                 : "Drag and drop is disabled for the current grouping",
             });
           }

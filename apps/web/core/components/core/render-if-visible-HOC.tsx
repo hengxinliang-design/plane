@@ -23,6 +23,24 @@ type Props = {
   forceRender?: boolean;
 };
 
+const scheduleIdleCallback = (callback: () => void, timeout = 300) => {
+  if (typeof window === "undefined") return undefined;
+
+  if (typeof window.requestIdleCallback === "function")
+    return window.requestIdleCallback(() => callback(), {
+      timeout,
+    });
+
+  return window.setTimeout(callback, 1);
+};
+
+const cancelScheduledIdleCallback = (handle: number | undefined) => {
+  if (typeof window === "undefined" || handle === undefined) return;
+
+  if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(handle);
+  else window.clearTimeout(handle);
+};
+
 function RenderIfVisible(props: Props) {
   const {
     defaultHeight = "300px",
@@ -51,13 +69,8 @@ function RenderIfVisible(props: Props) {
       const observer = new IntersectionObserver(
         (entries) => {
           //DO no remove comments for future
-          if (typeof window !== undefined && window.requestIdleCallback && useIdletime) {
-            window.requestIdleCallback(() => setShouldVisible(entries[entries.length - 1].isIntersecting), {
-              timeout: 300,
-            });
-          } else {
-            setShouldVisible(entries[entries.length - 1].isIntersecting);
-          }
+          if (useIdletime) scheduleIdleCallback(() => setShouldVisible(entries[entries.length - 1].isIntersecting));
+          else setShouldVisible(entries[entries.length - 1].isIntersecting);
         },
         {
           root: root?.current,
@@ -77,9 +90,10 @@ function RenderIfVisible(props: Props) {
   //Set height after render
   useEffect(() => {
     if (intersectionRef.current && isVisible && shouldRecordHeights) {
-      window.requestIdleCallback(() => {
+      const idleCallbackHandle = scheduleIdleCallback(() => {
         if (intersectionRef.current) placeholderHeight.current = `${intersectionRef.current.offsetHeight}px`;
       });
+      return () => cancelScheduledIdleCallback(idleCallbackHandle);
     }
   }, [isVisible, intersectionRef, shouldRecordHeights]);
 

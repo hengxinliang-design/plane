@@ -66,7 +66,6 @@ export const SubIssuesCollapsibleContent = observer(function SubIssuesCollapsibl
 
   // helpers
   const subIssueOperations = useSubIssueOperations(issueServiceType);
-  const subIssueHelpers = subIssueHelpersByIssueId(`${parentIssueId}_root`);
 
   // handler
   const handleIssueCrudState = useCallback(
@@ -84,16 +83,19 @@ export const SubIssuesCollapsibleContent = observer(function SubIssuesCollapsibl
   );
 
   const handleFetchSubIssues = useCallback(async () => {
-    const currentSubIssueHelpers = subIssueHelpersByIssueId(`${parentIssueId}_root`);
+    const rootHelperKey = `${parentIssueId}_root`;
+    const currentSubIssueHelpers = subIssueHelpersByIssueId(rootHelperKey);
     if (!currentSubIssueHelpers.issue_visibility.includes(parentIssueId)) {
       try {
-        setSubIssueHelpers(`${parentIssueId}_root`, "preview_loader", parentIssueId);
+        setSubIssueHelpers(rootHelperKey, "preview_loader", parentIssueId);
         await subIssueOperations.fetchSubIssues(workspaceSlug, projectId, parentIssueId);
-        setSubIssueHelpers(`${parentIssueId}_root`, "issue_visibility", parentIssueId);
+        const latestSubIssueHelpers = subIssueHelpersByIssueId(rootHelperKey);
+        if (!latestSubIssueHelpers.issue_visibility.includes(parentIssueId))
+          setSubIssueHelpers(rootHelperKey, "issue_visibility", parentIssueId);
       } catch (error) {
         console.error("Error fetching sub-work items:", error);
       } finally {
-        setSubIssueHelpers(`${parentIssueId}_root`, "preview_loader", "");
+        setSubIssueHelpers(rootHelperKey, "preview_loader", "");
       }
     }
   }, [parentIssueId, projectId, setSubIssueHelpers, subIssueHelpersByIssueId, subIssueOperations, workspaceSlug]);
@@ -114,20 +116,18 @@ export const SubIssuesCollapsibleContent = observer(function SubIssuesCollapsibl
 
   return (
     <>
-      {subIssueHelpers.issue_visibility.includes(parentIssueId) && (
-        <SubIssuesListRoot
-          storeType={EIssuesStoreType.PROJECT}
-          workspaceSlug={workspaceSlug}
-          projectId={projectId}
-          parentIssueId={parentIssueId}
-          rootIssueId={parentIssueId}
-          spacingLeft={6}
-          canEdit={!disabled}
-          handleIssueCrudState={handleIssueCrudState}
-          subIssueOperations={subIssueOperations}
-          issueServiceType={issueServiceType}
-        />
-      )}
+      <SubIssuesListRoot
+        storeType={EIssuesStoreType.PROJECT}
+        workspaceSlug={workspaceSlug}
+        projectId={projectId}
+        parentIssueId={parentIssueId}
+        rootIssueId={parentIssueId}
+        spacingLeft={6}
+        canEdit={!disabled}
+        handleIssueCrudState={handleIssueCrudState}
+        subIssueOperations={subIssueOperations}
+        issueServiceType={issueServiceType}
+      />
 
       {shouldRenderDeleteIssueModal && (
         <DeleteIssueModal

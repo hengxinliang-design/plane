@@ -64,6 +64,7 @@ export const ModuleDropdownBase = observer(function ModuleDropdownBase(props: TM
     multiple,
     onChange,
     onClose,
+    onDropdownOpen,
     placeholder = "",
     placement,
     projectId,

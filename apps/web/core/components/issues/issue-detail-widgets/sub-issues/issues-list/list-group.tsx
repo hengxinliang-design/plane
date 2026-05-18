@@ -57,6 +57,29 @@ export const SubIssuesListGroup = observer(function SubIssuesListGroup(props: TS
 
   if (!workItemIds.length) return null;
 
+  if (isAllIssues) {
+    return (
+      <>
+        {workItemIds.map((workItemId) => (
+          <SubIssuesListItem
+            key={workItemId}
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            parentIssueId={parentIssueId}
+            rootIssueId={rootIssueId}
+            issueId={workItemId}
+            canEdit={canEdit}
+            handleIssueCrudState={handleIssueCrudState}
+            subIssueOperations={subIssueOperations}
+            issueServiceType={serviceType}
+            spacingLeft={spacingLeft}
+            storeType={storeType}
+          />
+        ))}
+      </>
+    );
+  }
+
   return (
     <>
       <Collapsible

@@ -122,6 +122,13 @@ from .analytic import AnalyticViewSerializer
 
 from .notification import NotificationSerializer, UserNotificationPreferenceSerializer
 
+from .workflow import (
+    IssueApprovalRequestSerializer,
+    IssueWorkflowMemberSerializer,
+    IssueWorkflowMemberUpdateSerializer,
+    StateTransitionRuleSerializer,
+)
+
 from .exporter import ExporterHistorySerializer
 
 from .webhook import WebhookSerializer, WebhookLogSerializer

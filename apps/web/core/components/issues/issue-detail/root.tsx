@@ -24,6 +24,7 @@ import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
 // local components
 import { IssuePeekOverview } from "../peek-overview";
+import { showWorkflowTransitionError, showWorkflowTransitionNotice } from "../workflow-transition-toast";
 import { IssueMainContent } from "./main-content";
 import { IssueDetailsSidebar } from "./sidebar";
 
@@ -93,9 +94,11 @@ export const IssueDetailRoot = observer(function IssueDetailRoot(props: TIssueDe
       },
       update: async (workspaceSlug: string, projectId: string, issueId: string, data: Partial<TIssue>) => {
         try {
-          await updateIssue(workspaceSlug, projectId, issueId, data);
+          const response = (await updateIssue(workspaceSlug, projectId, issueId, data)) as unknown;
+          if ("state_id" in data) showWorkflowTransitionNotice(response);
         } catch (error) {
           console.log("Error in updating issue:", error);
+          if ("state_id" in data && showWorkflowTransitionError(error)) return;
           setToast({
             title: t("common.error.label"),
             type: TOAST_TYPE.ERROR,
