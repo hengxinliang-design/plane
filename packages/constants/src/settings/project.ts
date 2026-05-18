@@ -22,6 +22,13 @@ export const PROJECT_SETTINGS_CATEGORIES: PROJECT_SETTINGS_CATEGORY[] = [
   PROJECT_SETTINGS_CATEGORY.EXECUTION,
 ];
 
+export const PROJECT_SETTINGS_CATEGORY_LABELS: Record<PROJECT_SETTINGS_CATEGORY, string> = {
+  [PROJECT_SETTINGS_CATEGORY.GENERAL]: "common.general",
+  [PROJECT_SETTINGS_CATEGORY.FEATURES]: "common.features",
+  [PROJECT_SETTINGS_CATEGORY.WORK_STRUCTURE]: "common.work_structure",
+  [PROJECT_SETTINGS_CATEGORY.EXECUTION]: "common.execution",
+};
+
 export const PROJECT_SETTINGS: Record<TProjectSettingsTabs, TProjectSettingsItem> = {
   general: {
     key: "general",
@@ -79,6 +86,13 @@ export const PROJECT_SETTINGS: Record<TProjectSettingsTabs, TProjectSettingsItem
     access: [EUserProjectRoles.ADMIN, EUserProjectRoles.MEMBER],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/states/`,
   },
+  workflows: {
+    key: "workflows",
+    i18n_label: "common.workflows",
+    href: `/workflows`,
+    access: [EUserProjectRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/workflows/`,
+  },
   labels: {
     key: "labels",
     i18n_label: "common.labels",
@@ -115,6 +129,7 @@ export const GROUPED_PROJECT_SETTINGS: Record<PROJECT_SETTINGS_CATEGORY, TProjec
   ],
   [PROJECT_SETTINGS_CATEGORY.WORK_STRUCTURE]: [
     PROJECT_SETTINGS["states"],
+    PROJECT_SETTINGS["workflows"],
     PROJECT_SETTINGS["labels"],
     PROJECT_SETTINGS["estimates"],
   ],

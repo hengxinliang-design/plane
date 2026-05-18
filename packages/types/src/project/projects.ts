@@ -95,6 +95,7 @@ export interface IProjectMemberLite {
 export type TProjectMembership = {
   member: string;
   role: TUserPermissions | EUserProjectRoles;
+  workflow_roles?: TProjectWorkflowRole[];
 } & (
   | {
       id: string;
@@ -107,6 +108,8 @@ export type TProjectMembership = {
       created_at: null;
     }
 );
+
+export type TProjectWorkflowRole = "approver" | "co_worker";
 
 export interface IProjectBulkAddFormData {
   members: { role: TUserPermissions | EUserProjectRoles; member_id: string }[];

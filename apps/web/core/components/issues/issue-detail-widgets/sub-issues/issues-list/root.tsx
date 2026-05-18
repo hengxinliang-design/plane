@@ -4,10 +4,11 @@
  * See the LICENSE file for details.
  */
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { observer } from "mobx-react";
 // plane imports
 import { ListFilter } from "lucide-react";
+import { ALL_ISSUES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Button } from "@plane/propel/button";
 import type { GroupByColumnTypes, TIssue, TIssueServiceType, TSubIssueOperations } from "@plane/types";
@@ -61,7 +62,11 @@ export const SubIssuesListRoot = observer(function SubIssuesListRoot(props: Prop
   const filters = getSubIssueFilters(rootIssueId);
   const isRootLevel = useMemo(() => rootIssueId === parentIssueId, [rootIssueId, parentIssueId]);
   const group_by = isRootLevel ? (filters?.displayFilters?.group_by ?? null) : null;
-  const filteredSubWorkItemsCount = (getFilteredSubWorkItems(rootIssueId, filters.filters ?? {}) ?? []).length;
+  const rawSubIssueIds = subIssuesByIssueId(parentIssueId) ?? [];
+  const filteredSubWorkItems = getFilteredSubWorkItems(rootIssueId, filters.filters ?? {}) ?? [];
+  const hasActiveFilters = Object.keys(filters.filters ?? {}).length > 0;
+  const shouldUseRawSubIssueIds = !hasActiveFilters && rawSubIssueIds.length > 0 && filteredSubWorkItems.length === 0;
+  const filteredSubWorkItemsCount = filteredSubWorkItems.length || (shouldUseRawSubIssueIds ? rawSubIssueIds.length : 0);
 
   const groups = getGroupByColumns({
     groupBy: group_by as GroupByColumnTypes,
@@ -70,18 +75,32 @@ export const SubIssuesListRoot = observer(function SubIssuesListRoot(props: Prop
     isEpic: issueServiceType === EIssueServiceType.EPICS,
     projectId,
   });
+  const groupsToRender =
+    !shouldUseRawSubIssueIds && groups && groups.length > 0
+      ? groups
+      : [
+          {
+            id: ALL_ISSUES,
+            name: `All ${issueServiceType === EIssueServiceType.EPICS ? "Epics" : "work items"}`,
+            payload: {},
+            icon: undefined,
+          },
+        ];
 
-  const getWorkItemIds = useCallback(
-    (groupId: string) => {
-      if (isRootLevel) {
-        const groupedSubIssues = getGroupedSubWorkItems(rootIssueId);
-        return groupedSubIssues?.[groupId] ?? [];
+  const getWorkItemIds = (groupId: string) => {
+    if (isRootLevel) {
+      const groupedSubIssues = getGroupedSubWorkItems(rootIssueId);
+      const groupedWorkItemIds = groupedSubIssues?.[groupId];
+      if (groupedWorkItemIds?.length) return groupedWorkItemIds;
+      if (groupId === ALL_ISSUES) {
+        const filteredSubWorkItemIds = filteredSubWorkItems.map((workItem) => workItem.id);
+        return filteredSubWorkItemIds.length > 0 ? filteredSubWorkItemIds : rawSubIssueIds;
       }
-      const subIssueIds = subIssuesByIssueId(parentIssueId);
-      return subIssueIds ?? [];
-    },
-    [isRootLevel, subIssuesByIssueId, rootIssueId, getGroupedSubWorkItems, parentIssueId]
-  );
+      return [];
+    }
+    const subIssueIds = subIssuesByIssueId(parentIssueId);
+    return subIssueIds ?? [];
+  };
 
   const isSubWorkItems = issueServiceType === EIssueServiceType.ISSUES;
 
@@ -108,7 +127,7 @@ export const SubIssuesListRoot = observer(function SubIssuesListRoot(props: Prop
           }
         />
       ) : (
-        groups?.map((group) => (
+        groupsToRender.map((group) => (
           <SubIssuesListGroup
             key={group.id}
             workItemIds={getWorkItemIds(group.id)}

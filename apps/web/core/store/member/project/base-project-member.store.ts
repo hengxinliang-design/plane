@@ -15,6 +15,7 @@ import type {
   IProjectUserPropertiesResponse,
   IUserLite,
   TProjectMembership,
+  TProjectWorkflowRole,
 } from "@plane/types";
 // plane web imports
 import type { RootStore } from "@/plane-web/store/root.store";
@@ -53,6 +54,11 @@ export interface IBaseProjectMemberStore {
   getProjectMemberFetchStatus: (projectId: string) => boolean;
   getProjectMemberDetails: (userId: string, projectId: string) => IProjectMemberDetails | null;
   getProjectMemberIds: (projectId: string, includeGuestUsers: boolean) => string[] | null;
+  getProjectMemberIdsByWorkflowRole: (
+    projectId: string,
+    workflowRole: TProjectWorkflowRole,
+    excludeUserIds?: string[]
+  ) => string[] | null;
   getFilteredProjectMemberDetails: (userId: string, projectId: string) => IProjectMemberDetails | null;
   getProjectUserProperties: (projectId: string) => IProjectUserPropertiesResponse | null;
   // fetch actions
@@ -80,6 +86,12 @@ export interface IBaseProjectMemberStore {
     projectId: string,
     userId: string,
     role: EUserProjectRoles
+  ) => Promise<TProjectMembership>;
+  updateMemberWorkflowRoles: (
+    workspaceSlug: string,
+    projectId: string,
+    userId: string,
+    workflowRoles: TProjectWorkflowRole[]
   ) => Promise<TProjectMembership>;
   removeMemberFromProject: (workspaceSlug: string, projectId: string, userId: string) => Promise<void>;
 }
@@ -120,6 +132,7 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
       updateProjectUserProperties: action,
       bulkAddMembersToProject: action,
       updateMemberRole: action,
+      updateMemberWorkflowRoles: action,
       removeMemberFromProject: action,
     });
     // root store
@@ -219,6 +232,7 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
       id: projectMember.id,
       role: projectMember.role,
       original_role: projectMember.original_role,
+      workflow_roles: projectMember.workflow_roles ?? [],
       member: {
         ...userDetails,
         joining_date: projectMember.created_at ?? undefined,
@@ -246,6 +260,21 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
     return memberIds;
   });
 
+  getProjectMemberIdsByWorkflowRole = computedFn(
+    (projectId: string, workflowRole: TProjectWorkflowRole, excludeUserIds: string[] = []): string[] | null => {
+      if (!this.projectMemberMap?.[projectId]) return null;
+      const excludedUserIds = new Set(excludeUserIds);
+      const members = this.getProjectMemberships(projectId)
+        .filter((member) => member.role !== EUserPermissions.GUEST)
+        .filter((member) => member.workflow_roles?.includes(workflowRole))
+        .filter((member) => !excludedUserIds.has(member.member));
+      return sortBy(members, [
+        (member) => member.member !== this.userStore.data?.id,
+        (member) => this.memberRoot?.memberMap?.[member.member]?.display_name?.toLowerCase(),
+      ]).map((member) => member.member);
+    }
+  );
+
   /**
    * @description get the filtered project member details for a specific user
    * @param userId
@@ -272,6 +301,7 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
       id: projectMember.id,
       role: projectMember.role,
       original_role: projectMember.original_role,
+      workflow_roles: projectMember.workflow_roles ?? [],
       member: {
         ...userDetails,
         joining_date: projectMember.created_at ?? undefined,
@@ -313,6 +343,7 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
         response.forEach((member) => {
           set(this.projectMemberMap, [projectId, member.member], {
             ...member,
+            workflow_roles: member.workflow_roles ?? [],
             role: this.getUserProjectRole(member.member, projectId) ?? member.role,
             original_role: member.role,
           });
@@ -396,6 +427,41 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
             permissionBeforeUpdate
           );
         }
+      });
+      throw error;
+    }
+  };
+
+  updateMemberWorkflowRoles = async (
+    workspaceSlug: string,
+    projectId: string,
+    userId: string,
+    workflowRoles: TProjectWorkflowRole[]
+  ) => {
+    const memberDetails = this.getProjectMemberDetails(userId, projectId);
+    if (!memberDetails || !memberDetails?.id) throw new Error("Member not found");
+    const membershipBeforeUpdate = { ...this.getProjectMembershipByUserId(userId, projectId) };
+    const nextWorkflowRoles = Array.from(new Set(workflowRoles));
+
+    try {
+      runInAction(() => {
+        set(this.projectMemberMap, [projectId, userId, "workflow_roles"], nextWorkflowRoles);
+      });
+      const response = await this.projectMemberService.updateProjectMember(
+        workspaceSlug,
+        projectId,
+        memberDetails.id,
+        {
+          workflow_roles: nextWorkflowRoles,
+        }
+      );
+      runInAction(() => {
+        set(this.projectMemberMap, [projectId, userId, "workflow_roles"], response.workflow_roles ?? []);
+      });
+      return response;
+    } catch (error) {
+      runInAction(() => {
+        set(this.projectMemberMap, [projectId, userId, "workflow_roles"], membershipBeforeUpdate?.workflow_roles ?? []);
       });
       throw error;
     }

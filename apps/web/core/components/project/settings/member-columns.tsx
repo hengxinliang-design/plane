@@ -7,19 +7,19 @@
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { Controller, useForm } from "react-hook-form";
-import { CircleMinus } from "lucide-react";
+import { CircleMinus, ShieldCheck, Users } from "lucide-react";
 import { Disclosure } from "@headlessui/react";
 // plane imports
 import { ROLE, EUserPermissions, MEMBER_TRACKER_ELEMENTS } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import type { EUserProjectRoles, IUser, IWorkspaceMember, TProjectMembership } from "@plane/types";
+import type { EUserProjectRoles, IUser, IWorkspaceMember, TProjectMembership, TProjectWorkflowRole } from "@plane/types";
 import { CustomMenu, CustomSelect } from "@plane/ui";
-import { getFileURL } from "@plane/utils";
+import { cn, getFileURL } from "@plane/utils";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 
-export interface RowData extends Pick<TProjectMembership, "original_role"> {
+export interface RowData extends Pick<TProjectMembership, "original_role" | "workflow_roles"> {
   member: IWorkspaceMember;
 }
 
@@ -37,6 +37,21 @@ type AccountTypeProps = {
   workspaceSlug: string;
   projectId: string;
 };
+
+type WorkflowRolesProps = {
+  rowData: RowData;
+  workspaceSlug: string;
+  projectId: string;
+};
+
+const WORKFLOW_ROLE_OPTIONS: {
+  key: TProjectWorkflowRole;
+  label: string;
+  icon: typeof ShieldCheck;
+}[] = [
+  { key: "approver", label: "Approver", icon: ShieldCheck },
+  { key: "co_worker", label: "Co-worker", icon: Users },
+];
 
 export function NameColumn(props: NameProps) {
   const { rowData, workspaceSlug, isAdmin, currentUser, setRemoveMemberModal } = props;
@@ -191,5 +206,78 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
         </div>
       )}
     </>
+  );
+});
+
+export const WorkflowRolesColumn = observer(function WorkflowRolesColumn(props: WorkflowRolesProps) {
+  const { rowData, projectId, workspaceSlug } = props;
+  const {
+    project: { updateMemberWorkflowRoles },
+    workspace: { getWorkspaceMemberDetails },
+  } = useMember();
+  const { data: currentUser } = useUser();
+  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+
+  const currentWorkflowRoles = rowData.workflow_roles ?? [];
+  const isCurrentUser = currentUser?.id === rowData.member.id;
+  const isRowDataWorkspaceAdmin = [EUserPermissions.ADMIN].includes(
+    Number(getWorkspaceMemberDetails(rowData.member.id)?.role) ?? EUserPermissions.GUEST
+  );
+  const isCurrentUserWorkspaceAdmin = currentUser
+    ? [EUserPermissions.ADMIN].includes(
+        Number(getWorkspaceMemberDetails(currentUser.id)?.role) ?? EUserPermissions.GUEST
+      )
+    : false;
+  const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
+  const isCurrentUserProjectAdmin = currentProjectRole
+    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(Number(currentProjectRole) ?? EUserPermissions.GUEST)
+    : false;
+  const isEditable =
+    (isCurrentUserWorkspaceAdmin && isCurrentUser) ||
+    (isCurrentUserProjectAdmin && !isRowDataWorkspaceAdmin && !isCurrentUser);
+
+  const handleToggleWorkflowRole = async (workflowRole: TProjectWorkflowRole) => {
+    const nextWorkflowRoles = currentWorkflowRoles.includes(workflowRole)
+      ? currentWorkflowRoles.filter((role) => role !== workflowRole)
+      : [...currentWorkflowRoles, workflowRole];
+
+    await updateMemberWorkflowRoles(workspaceSlug.toString(), projectId.toString(), rowData.member.id, nextWorkflowRoles).catch(
+      (err) => {
+        const error = err?.error;
+        const errorString = Array.isArray(error) ? error[0] : error;
+        setToast({
+          type: TOAST_TYPE.ERROR,
+          title: "Workflow roles not updated.",
+          message: errorString ?? "An error occurred while updating workflow roles. Please try again.",
+        });
+      }
+    );
+  };
+
+  return (
+    <div className="flex min-w-52 flex-wrap gap-1.5">
+      {WORKFLOW_ROLE_OPTIONS.map((workflowRole) => {
+        const Icon = workflowRole.icon;
+        const isSelected = currentWorkflowRoles.includes(workflowRole.key);
+        return (
+          <button
+            key={workflowRole.key}
+            type="button"
+            disabled={!isEditable}
+            onClick={() => handleToggleWorkflowRole(workflowRole.key)}
+            className={cn(
+              "inline-flex h-7 items-center gap-1.5 rounded border px-2 text-12 transition-colors",
+              isSelected
+                ? "border-custom-primary-100 bg-custom-primary-100/10 text-custom-primary-100"
+                : "border-subtle text-secondary hover:bg-surface-2",
+              !isEditable && "cursor-not-allowed opacity-60"
+            )}
+          >
+            <Icon className="size-3.5" />
+            {workflowRole.label}
+          </button>
+        );
+      })}
+    </div>
   );
 });

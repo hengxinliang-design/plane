@@ -79,6 +79,8 @@ from .workspace import (
 
 from .favorite import UserFavorite
 
+from .workflow import IssueApprovalRequest, IssueWorkflowMember, StateTransitionRule
+
 from .issue_type import IssueType
 
 from .recent_visit import UserRecentVisit

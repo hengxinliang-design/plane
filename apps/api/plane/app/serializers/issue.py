@@ -4,6 +4,7 @@
 
 # Django imports
 from django.utils import timezone
+from django.utils.encoding import iri_to_uri
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -42,6 +43,7 @@ from plane.db.models import (
     IssueDescriptionVersion,
     ProjectMember,
     EstimatePoint,
+    IssueWorkflowMember,
 )
 from plane.utils.content_validator import (
     validate_html_content,
@@ -153,6 +155,16 @@ class IssueCreateSerializer(BaseSerializer):
                 is_active=True,
                 member_id__in=attrs["assignee_ids"],
             ).values_list("member_id", flat=True)
+
+            if self.instance:
+                workflow_member_ids = set(
+                    IssueWorkflowMember.objects.filter(issue=self.instance).values_list("member_id", flat=True)
+                )
+                overlapping_member_ids = [str(member_id) for member_id in attrs["assignee_ids"] if member_id in workflow_member_ids]
+                if overlapping_member_ids:
+                    raise serializers.ValidationError(
+                        {"assignee_ids": f"Assignees cannot be Approver or Co-worker: {overlapping_member_ids}"}
+                    )
 
         # Validate labels are from project
         if attrs.get("label_ids"):
@@ -564,9 +576,12 @@ class IssueLinkSerializer(BaseSerializer):
 
     def to_internal_value(self, data):
         # Modify the URL before validation by appending http:// if missing
-        url = data.get("url", "")
+        url = data.get("url", "").strip()
         if url and not url.startswith(("http://", "https://")):
-            data["url"] = "http://" + url
+            url = "http://" + url
+
+        if url:
+            data["url"] = iri_to_uri(url)
 
         return super().to_internal_value(data)
 

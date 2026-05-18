@@ -575,7 +575,13 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
       } as TIssue);
 
       // call API to update the issue
-      await this.issueService.patchIssue(workspaceSlug, projectId, issueId, data);
+      const response = await this.issueService.patchIssue(workspaceSlug, projectId, issueId, data);
+      if (response?.approval_required) {
+        this.rootIssueStore.issues.updateIssue(issueId, issueBeforeUpdate ?? {});
+        this.updateIssueList(issueBeforeUpdate, { ...issueBeforeUpdate, ...data } as TIssue);
+        this.fetchParentStats(workspaceSlug, projectId);
+        return response;
+      }
 
       // call fetch Parent Stats
       this.fetchParentStats(workspaceSlug, projectId);

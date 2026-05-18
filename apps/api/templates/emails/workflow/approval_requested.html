@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <p>Hello {{ approver_name }},</p>
+    <p>{{ requester_name }} requested approval to move work item <strong>{{ issue_identifier }}</strong> in {{ project_name }}.</p>
+    <p>
+      <strong>{{ issue_name }}</strong><br />
+      {{ from_state }} &rarr; {{ to_state }}
+    </p>
+    <p>
+      <a href="{{ issue_url }}">Open work item</a>
+    </p>
+    <p>Workspace: {{ workspace_name }}</p>
+  </body>
+</html>

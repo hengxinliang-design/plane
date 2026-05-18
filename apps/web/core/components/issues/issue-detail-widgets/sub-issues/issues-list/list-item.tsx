@@ -4,6 +4,7 @@
  * See the LICENSE file for details.
  */
 
+import { useEffect } from "react";
 import { observer } from "mobx-react";
 import { Link as Loader } from "lucide-react";
 import { useTranslation } from "@plane/i18n";
@@ -62,7 +63,7 @@ export const SubIssuesListItem = observer(function SubIssuesListItem(props: Prop
   } = props;
   const { t } = useTranslation();
   const {
-    issue: { getIssueById },
+    issue: { fetchIssue, getIssueById },
     subIssues: {
       filters: { getSubIssueFilters },
     },
@@ -89,6 +90,14 @@ export const SubIssuesListItem = observer(function SubIssuesListItem(props: Prop
 
   //
   const handleIssuePeekOverview = (issue: TIssue) => handleRedirection(workspaceSlug, issue, isMobile);
+
+  useEffect(() => {
+    if (issue || !issueId) return;
+
+    fetchIssue(workspaceSlug, projectId, issueId).catch((error: unknown) => {
+      console.error("Error fetching sub-work item details:", error);
+    });
+  }, [fetchIssue, issue, issueId, projectId, workspaceSlug]);
 
   if (!issue) return <></>;
 
@@ -131,9 +140,12 @@ export const SubIssuesListItem = observer(function SubIssuesListItem(props: Prop
                         e.preventDefault();
                         e.stopPropagation();
                         if (!subIssueHelpers.issue_visibility.includes(issueId)) {
-                          setSubIssueHelpers(parentIssueId, "preview_loader", issueId);
-                          await fetchSubIssues(workspaceSlug, projectId, issueId);
-                          setSubIssueHelpers(parentIssueId, "preview_loader", issueId);
+                          try {
+                            setSubIssueHelpers(parentIssueId, "preview_loader", issueId);
+                            await fetchSubIssues(workspaceSlug, projectId, issueId);
+                          } finally {
+                            setSubIssueHelpers(parentIssueId, "preview_loader", issueId);
+                          }
                         }
                         setSubIssueHelpers(parentIssueId, "issue_visibility", issueId);
                       }}

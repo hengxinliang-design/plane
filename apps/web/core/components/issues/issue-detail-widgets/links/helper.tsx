@@ -14,6 +14,13 @@ import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 // local imports
 import type { TLinkOperations } from "../../issue-detail/links";
 
+const getLinkErrorMessage = (error: any, fallback: string) =>
+  error?.data?.error ??
+  error?.data?.url?.error ??
+  error?.data?.url?.[0] ??
+  error?.data?.non_field_errors?.[0] ??
+  fallback;
+
 export const useLinkOperations = (
   workspaceSlug: string,
   projectId: string,
@@ -37,7 +44,7 @@ export const useLinkOperations = (
           });
         } catch (error: any) {
           setToast({
-            message: error?.data?.error ?? t("links.toasts.not_created.message"),
+            message: getLinkErrorMessage(error, t("links.toasts.not_created.message")),
             type: TOAST_TYPE.ERROR,
             title: t("links.toasts.not_created.title"),
           });

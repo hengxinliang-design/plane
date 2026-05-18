@@ -22,6 +22,7 @@ import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useWorkItemProperties } from "@/plane-web/hooks/use-issue-properties";
 // local imports
 import type { TIssueOperations } from "../issue-detail";
+import { showWorkflowTransitionError, showWorkflowTransitionNotice } from "../workflow-transition-toast";
 import { IssueView } from "./view";
 
 export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWorkItemPeekOverview) {
@@ -79,11 +80,13 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
         if (issues?.updateIssue) {
           await issues
             .updateIssue(workspaceSlug, projectId, issueId, data)
-            .then(async () => {
+            .then(async (response) => {
+              if ("state_id" in data) showWorkflowTransitionNotice(response);
               fetchActivities(workspaceSlug, projectId, issueId);
               return;
             })
-            .catch((_error) => {
+            .catch((error) => {
+              if ("state_id" in data && showWorkflowTransitionError(error)) return;
               setToast({
                 title: t("toast.error"),
                 type: TOAST_TYPE.ERROR,

@@ -44,6 +44,7 @@ import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // plane web components
 import { WorkItemLayoutAdditionalProperties } from "@/plane-web/components/issues/issue-layouts/additional-properties";
+import { showWorkflowTransitionError, showWorkflowTransitionNotice } from "../../workflow-transition-toast";
 // local components
 import { IssuePropertyLabels } from "./labels";
 import { WithDisplayPropertiesHOC } from "./with-display-properties-HOC";
@@ -108,7 +109,13 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
   );
 
   const handleState = async (stateId: string) => {
-    if (updateIssue) await updateIssue(issue.project_id, issue.id, { state_id: stateId });
+    if (!updateIssue) return;
+    try {
+      const response = (await updateIssue(issue.project_id, issue.id, { state_id: stateId })) as unknown;
+      showWorkflowTransitionNotice(response);
+    } catch (error) {
+      if (!showWorkflowTransitionError(error)) throw error;
+    }
   };
 
   const handlePriority = async (value: TIssuePriorities) => {
