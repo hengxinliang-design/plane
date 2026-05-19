@@ -76,7 +76,7 @@ const WorkflowMatrixCell = observer(function WorkflowMatrixCell(props: TWorkflow
   };
 
   if (fromState.id === toState.id) {
-    return <div className="flex h-full min-h-28 items-center justify-center text-sm text-placeholder">-</div>;
+    return <div className="text-sm flex h-full min-h-28 items-center justify-center text-placeholder">-</div>;
   }
 
   if (!rule) {
@@ -112,7 +112,7 @@ const WorkflowMatrixCell = observer(function WorkflowMatrixCell(props: TWorkflow
   };
 
   return (
-    <div className="min-h-28 space-y-2 p-2 text-xs">
+    <div className="text-xs min-h-28 space-y-2 p-2">
       <div className="flex items-center justify-between gap-2">
         <label className="flex items-center gap-1.5 text-secondary">
           <input
@@ -148,7 +148,9 @@ const WorkflowMatrixCell = observer(function WorkflowMatrixCell(props: TWorkflow
             </button>
           );
         })}
-        {allowedRoles.length === 0 && <span className="rounded bg-surface-2 px-1.5 py-1 text-placeholder">Admin only</span>}
+        {allowedRoles.length === 0 && (
+          <span className="rounded bg-surface-2 px-1.5 py-1 text-placeholder">Admin only</span>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-secondary">
@@ -251,10 +253,7 @@ function WorkflowsSettingsPage({ params }: Route.ComponentProps) {
     <SettingsContentWrapper header={<WorkflowsProjectSettingsHeader />}>
       <PageHead title={pageTitle} />
       <div className="w-full">
-        <SettingsHeading
-          title="流程"
-          description="用状态流转矩阵配置每条流程允许的角色、审批要求和邮件通知。"
-        />
+        <SettingsHeading title="流程" description="用状态流转矩阵配置每条流程允许的角色、审批要求和邮件通知。" />
 
         <div className="mt-6 rounded border border-subtle-1">
           {isLoading ? (
@@ -262,19 +261,19 @@ function WorkflowsSettingsPage({ params }: Route.ComponentProps) {
               <Spinner />
             </div>
           ) : states.length === 0 ? (
-            <div className="p-6 text-sm text-secondary">请先在“{t("common.states")}”中创建项目状态。</div>
+            <div className="text-sm p-6 text-secondary">请先在“{t("common.states")}”中创建项目状态。</div>
           ) : (
             <div className="overflow-auto">
               <table className="min-w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-surface-2">
-                    <th className="sticky left-0 z-10 min-w-36 border-r border-subtle-1 bg-surface-2 p-3 text-xs font-medium text-secondary">
+                    <th className="text-xs sticky left-0 z-10 min-w-36 border-r border-subtle-1 bg-surface-2 p-3 font-medium text-secondary">
                       From / To
                     </th>
                     {states.map((state) => (
                       <th
                         key={state.id}
-                        className="min-w-64 border-r border-subtle-1 p-3 text-xs font-medium text-secondary"
+                        className="text-xs min-w-64 border-r border-subtle-1 p-3 font-medium text-secondary"
                       >
                         <div className="flex items-center gap-2">
                           <span className="size-2 rounded-full" style={{ backgroundColor: state.color }} />
@@ -287,7 +286,7 @@ function WorkflowsSettingsPage({ params }: Route.ComponentProps) {
                 <tbody>
                   {states.map((fromState) => (
                     <tr key={fromState.id} className="border-t border-subtle-1">
-                      <th className="sticky left-0 z-10 min-w-36 border-r border-subtle-1 bg-surface-1 p-3 text-xs font-medium text-secondary">
+                      <th className="text-xs sticky left-0 z-10 min-w-36 border-r border-subtle-1 bg-surface-1 p-3 font-medium text-secondary">
                         <div className="flex items-center gap-2">
                           <span className="size-2 rounded-full" style={{ backgroundColor: fromState.color }} />
                           <span className="truncate">{fromState.name}</span>

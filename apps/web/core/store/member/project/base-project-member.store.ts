@@ -447,14 +447,9 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
       runInAction(() => {
         set(this.projectMemberMap, [projectId, userId, "workflow_roles"], nextWorkflowRoles);
       });
-      const response = await this.projectMemberService.updateProjectMember(
-        workspaceSlug,
-        projectId,
-        memberDetails.id,
-        {
-          workflow_roles: nextWorkflowRoles,
-        }
-      );
+      const response = await this.projectMemberService.updateProjectMember(workspaceSlug, projectId, memberDetails.id, {
+        workflow_roles: nextWorkflowRoles,
+      });
       runInAction(() => {
         set(this.projectMemberMap, [projectId, userId, "workflow_roles"], response.workflow_roles ?? []);
       });
@@ -498,10 +493,9 @@ export abstract class BaseProjectMemberStore implements IBaseProjectMemberStore 
   removeMemberFromProject = async (workspaceSlug: string, projectId: string, userId: string) => {
     const memberDetails = this.getProjectMemberDetails(userId, projectId);
     if (!memberDetails || !memberDetails?.id) throw new Error("Member not found");
-    await this.projectMemberService.deleteProjectMember(workspaceSlug, projectId, memberDetails?.id).then(() => {
-      runInAction(() => {
-        this.processMemberRemoval(projectId, userId);
-      });
+    await this.projectMemberService.deleteProjectMember(workspaceSlug, projectId, memberDetails?.id);
+    runInAction(() => {
+      this.processMemberRemoval(projectId, userId);
     });
   };
 

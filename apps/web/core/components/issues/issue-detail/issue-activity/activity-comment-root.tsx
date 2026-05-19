@@ -7,7 +7,11 @@
 import { observer } from "mobx-react";
 // plane imports
 import type { E_SORT_ORDER, TActivityFilters, EActivityFilterType } from "@plane/constants";
-import { BASE_ACTIVITY_FILTER_TYPES, EActivityFilterType as ACTIVITY_FILTER_TYPE, filterActivityOnSelectedFilters } from "@plane/constants";
+import {
+  BASE_ACTIVITY_FILTER_TYPES,
+  EActivityFilterType as ACTIVITY_FILTER_TYPE,
+  filterActivityOnSelectedFilters,
+} from "@plane/constants";
 import type { TCommentsOperations } from "@plane/types";
 // components
 import { CommentCard } from "@/components/comments/card/root";

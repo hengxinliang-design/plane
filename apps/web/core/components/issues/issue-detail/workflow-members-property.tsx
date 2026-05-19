@@ -56,8 +56,7 @@ export const WorkflowMembersProperty = observer(function WorkflowMembersProperty
     coWorkerIds: [],
   });
   const excludedAssigneeIds = useMemo(() => new Set(assigneeIds), [assigneeIds]);
-  const approverMemberIds =
-    getProjectMemberIdsByWorkflowRole(projectId, "approver", assigneeIds) ?? [];
+  const approverMemberIds = getProjectMemberIdsByWorkflowRole(projectId, "approver", assigneeIds) ?? [];
   const coWorkerMemberIds =
     getProjectMemberIdsByWorkflowRole(
       projectId,
@@ -121,7 +120,9 @@ export const WorkflowMembersProperty = observer(function WorkflowMembersProperty
     const previousMembers = members;
     const nextMembers = {
       ...members,
-      coWorkerIds: coWorkerIds.filter((memberId) => memberId !== members.approverId && !excludedAssigneeIds.has(memberId)),
+      coWorkerIds: coWorkerIds.filter(
+        (memberId) => memberId !== members.approverId && !excludedAssigneeIds.has(memberId)
+      ),
     };
     setMembers(nextMembers);
 

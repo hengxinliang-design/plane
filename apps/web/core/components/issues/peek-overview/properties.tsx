@@ -25,14 +25,12 @@ import { cn, getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate } 
 // components
 import { DateDropdown } from "@/components/dropdowns/date";
 import { EstimateDropdown } from "@/components/dropdowns/estimate";
-import { ButtonAvatars } from "@/components/dropdowns/member/avatar";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
 // helpers
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
-import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 // plane web components
@@ -42,6 +40,7 @@ import { DateAlert } from "@/plane-web/components/issues/issue-details/sidebar/d
 import { TransferHopInfo } from "@/plane-web/components/issues/issue-details/sidebar/transfer-hop-info";
 import { IssueWorklogProperty } from "@/plane-web/components/issues/worklog/property";
 import type { TIssueOperations } from "../issue-detail";
+import { IssueCreatorProperty } from "../issue-detail/creator-property";
 import { IssueCycleSelect } from "../issue-detail/cycle-select";
 import { IssueLabel } from "../issue-detail/label";
 import { IssueModuleSelect } from "../issue-detail/module-select";
@@ -64,11 +63,9 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
     issue: { getIssueById },
   } = useIssueDetail();
   const { getStateById } = useProjectState();
-  const { getUserDetails } = useMember();
   // derived values
   const issue = getIssueById(issueId);
   if (!issue) return <></>;
-  const createdByDetails = getUserDetails(issue?.created_by);
   const projectDetails = getProjectById(issue.project_id);
   const isEstimateEnabled = projectDetails?.estimate;
   const stateDetails = getStateById(issue.state_id);
@@ -136,21 +133,17 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
           />
         </SidebarPropertyListItem>
 
-        {createdByDetails && (
-          <SidebarPropertyListItem
-            icon={UserCirclePropertyIcon}
-            label={t("common.created_by")}
-            childrenClassName="px-2"
-          >
-            <ButtonAvatars
-              showTooltip
-              userIds={createdByDetails?.display_name.includes("-intake") ? null : createdByDetails?.id}
-            />
-            <span className="grow truncate text-body-xs-medium leading-5 text-secondary">
-              {createdByDetails?.display_name.includes("-intake") ? "Plane" : createdByDetails?.display_name}
-            </span>
-          </SidebarPropertyListItem>
-        )}
+        <SidebarPropertyListItem icon={UserCirclePropertyIcon} label={t("common.created_by")}>
+          <IssueCreatorProperty
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            issueId={issueId}
+            createdBy={issue.created_by}
+            disabled={disabled}
+            issueOperations={issueOperations}
+            textClassName="grow truncate text-body-xs-medium leading-5 text-secondary"
+          />
+        </SidebarPropertyListItem>
 
         <SidebarPropertyListItem icon={StartDatePropertyIcon} label={t("common.order_by.start_date")}>
           <DateDropdown

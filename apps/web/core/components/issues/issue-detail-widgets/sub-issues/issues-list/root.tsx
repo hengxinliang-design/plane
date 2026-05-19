@@ -66,7 +66,8 @@ export const SubIssuesListRoot = observer(function SubIssuesListRoot(props: Prop
   const filteredSubWorkItems = getFilteredSubWorkItems(rootIssueId, filters.filters ?? {}) ?? [];
   const hasActiveFilters = Object.keys(filters.filters ?? {}).length > 0;
   const shouldUseRawSubIssueIds = !hasActiveFilters && rawSubIssueIds.length > 0 && filteredSubWorkItems.length === 0;
-  const filteredSubWorkItemsCount = filteredSubWorkItems.length || (shouldUseRawSubIssueIds ? rawSubIssueIds.length : 0);
+  const filteredSubWorkItemsCount =
+    filteredSubWorkItems.length || (shouldUseRawSubIssueIds ? rawSubIssueIds.length : 0);
 
   const groups = getGroupByColumns({
     groupBy: group_by as GroupByColumnTypes,

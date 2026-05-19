@@ -60,6 +60,7 @@ from plane.db.models import (
     Project,
     ProjectMember,
     UserRecentVisit,
+    WorkspaceMember,
 )
 from plane.utils.filters import ComplexFilterBackend, IssueFilterSet
 from plane.utils.global_paginator import paginate
@@ -621,8 +622,9 @@ class IssueViewSet(BaseViewSet):
         queryset = self.get_queryset()
         queryset = self.apply_annotations(queryset)
 
-        skip_activity = request.data.pop("skip_activity", False)
-        is_description_update = request.data.get("description_html") is not None
+        request_data = request.data.copy()
+        skip_activity = request_data.pop("skip_activity", False)
+        is_description_update = request_data.get("description_html") is not None
 
         issue = (
             queryset.annotate(
@@ -668,9 +670,51 @@ class IssueViewSet(BaseViewSet):
 
         current_instance = json.dumps(IssueDetailSerializer(issue).data, cls=DjangoJSONEncoder)
 
-        requested_data = json.dumps(self.request.data, cls=DjangoJSONEncoder)
+        requested_data = json.dumps(request_data, cls=DjangoJSONEncoder)
+        requested_created_by_id = request_data.pop("created_by", None)
+        should_update_creator = (
+            requested_created_by_id is not None and str(requested_created_by_id) != str(issue.created_by_id)
+        )
+        if should_update_creator:
+            can_update_creator = ProjectMember.objects.filter(
+                workspace__slug=slug,
+                project_id=project_id,
+                member=request.user,
+                role=ROLE.ADMIN.value,
+                is_active=True,
+            ).exists() or (
+                ProjectMember.objects.filter(
+                    workspace__slug=slug,
+                    project_id=project_id,
+                    member=request.user,
+                    is_active=True,
+                ).exists()
+                and WorkspaceMember.objects.filter(
+                    workspace__slug=slug,
+                    member=request.user,
+                    role=ROLE.ADMIN.value,
+                    is_active=True,
+                ).exists()
+            )
+            if not can_update_creator:
+                return Response(
+                    {"error": "Only project admins can update the work item creator"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
-        requested_state_id = request.data.get("state_id")
+            if not ProjectMember.objects.filter(
+                workspace__slug=slug,
+                project_id=project_id,
+                member_id=requested_created_by_id,
+                role__gte=ROLE.MEMBER.value,
+                is_active=True,
+            ).exists():
+                return Response(
+                    {"error": "Creator must be an active project member"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        requested_state_id = request_data.get("state_id")
         previous_state_id = issue.state_id
         current_site = base_host(request=request, is_app=True)
 
@@ -683,9 +727,15 @@ class IssueViewSet(BaseViewSet):
         if approval_response is not None:
             return approval_response
 
-        serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
+        serializer = IssueCreateSerializer(issue, data=request_data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
             serializer.save()
+            if should_update_creator:
+                issue.updated_by = request.user
+                issue.save(
+                    created_by_id=requested_created_by_id,
+                    update_fields=["created_by", "updated_by", "updated_at"],
+                )
             record_direct_approval_if_needed(issue, previous_state_id, requested_state_id, request.user, current_site)
             # Check if the update is a migration description update
             is_migration_description_update = skip_activity and is_description_update

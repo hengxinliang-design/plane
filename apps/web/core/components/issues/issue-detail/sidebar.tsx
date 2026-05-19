@@ -25,14 +25,12 @@ import { cn, getDate, renderFormattedPayloadDate, shouldHighlightIssueDueDate } 
 // components
 import { DateDropdown } from "@/components/dropdowns/date";
 import { EstimateDropdown } from "@/components/dropdowns/estimate";
-import { ButtonAvatars } from "@/components/dropdowns/member/avatar";
 import { MemberDropdown } from "@/components/dropdowns/member/dropdown";
 import { PriorityDropdown } from "@/components/dropdowns/priority";
 import { StateDropdown } from "@/components/dropdowns/state/dropdown";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
-import { useMember } from "@/hooks/store/use-member";
 import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 // plane web components
@@ -43,6 +41,7 @@ import { DateAlert } from "@/plane-web/components/issues/issue-details/sidebar/d
 import { TransferHopInfo } from "@/plane-web/components/issues/issue-details/sidebar/transfer-hop-info";
 import { IssueWorklogProperty } from "@/plane-web/components/issues/worklog/property";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
+import { IssueCreatorProperty } from "./creator-property";
 import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
 import { IssueModuleSelect } from "./module-select";
@@ -66,12 +65,9 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
   const {
     issue: { getIssueById },
   } = useIssueDetail();
-  const { getUserDetails } = useMember();
   const { getStateById } = useProjectState();
   const issue = getIssueById(issueId);
   if (!issue) return <></>;
-
-  const createdByDetails = getUserDetails(issue.created_by);
 
   // derived values
   const projectDetails = getProjectById(issue.project_id);
@@ -142,14 +138,16 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
               />
             </SidebarPropertyListItem>
 
-            {createdByDetails && (
-              <SidebarPropertyListItem icon={UserCirclePropertyIcon} label={t("common.created_by")}>
-                <div className="flex gap-2 px-2">
-                  <ButtonAvatars showTooltip userIds={createdByDetails.id} />
-                  <span className="grow truncate text-body-xs-regular leading-5">{createdByDetails?.display_name}</span>
-                </div>
-              </SidebarPropertyListItem>
-            )}
+            <SidebarPropertyListItem icon={UserCirclePropertyIcon} label={t("common.created_by")}>
+              <IssueCreatorProperty
+                workspaceSlug={workspaceSlug}
+                projectId={projectId}
+                issueId={issueId}
+                createdBy={issue.created_by}
+                disabled={!isEditable}
+                issueOperations={issueOperations}
+              />
+            </SidebarPropertyListItem>
 
             <SidebarPropertyListItem icon={StartDatePropertyIcon} label={t("common.order_by.start_date")}>
               <DateDropdown

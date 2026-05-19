@@ -39,11 +39,7 @@ export class IssueWorkflowMemberService extends APIService {
     super(API_BASE_URL);
   }
 
-  async retrieve(
-    workspaceSlug: string,
-    projectId: string,
-    issueId: string
-  ): Promise<TIssueWorkflowMembersResponse> {
+  async retrieve(workspaceSlug: string, projectId: string, issueId: string): Promise<TIssueWorkflowMembersResponse> {
     return this.get(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/workflow-members/`)
       .then((response) => response?.data)
       .catch((error) => {
@@ -57,7 +53,10 @@ export class IssueWorkflowMemberService extends APIService {
     issueId: string,
     data: TIssueWorkflowMembersPayload
   ): Promise<TIssueWorkflowMembersResponse> {
-    return this.patch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/workflow-members/`, data)
+    return this.patch(
+      `/api/workspaces/${workspaceSlug}/projects/${projectId}/issues/${issueId}/workflow-members/`,
+      data
+    )
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

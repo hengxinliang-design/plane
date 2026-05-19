@@ -12,7 +12,13 @@ import { Disclosure } from "@headlessui/react";
 // plane imports
 import { ROLE, EUserPermissions, MEMBER_TRACKER_ELEMENTS } from "@plane/constants";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
-import type { EUserProjectRoles, IUser, IWorkspaceMember, TProjectMembership, TProjectWorkflowRole } from "@plane/types";
+import type {
+  EUserProjectRoles,
+  IUser,
+  IWorkspaceMember,
+  TProjectMembership,
+  TProjectWorkflowRole,
+} from "@plane/types";
 import { CustomMenu, CustomSelect } from "@plane/ui";
 import { cn, getFileURL } from "@plane/utils";
 // hooks
@@ -53,6 +59,9 @@ const WORKFLOW_ROLE_OPTIONS: {
   { key: "co_worker", label: "Co-worker", icon: Users },
 ];
 
+const getNumericRole = (role: EUserPermissions | string | number | null | undefined) =>
+  role == null ? EUserPermissions.GUEST : Number(role);
+
 export function NameColumn(props: NameProps) {
   const { rowData, workspaceSlug, isAdmin, currentUser, setRemoveMemberModal } = props;
   // derived values
@@ -60,7 +69,7 @@ export function NameColumn(props: NameProps) {
 
   return (
     <Disclosure>
-      {({}) => (
+      {() => (
         <div className="group relative">
           <div className="flex w-72 items-center gap-2">
             <div className="flex flex-1 items-center gap-x-2 gap-y-2">
@@ -91,14 +100,15 @@ export function NameColumn(props: NameProps) {
                 placement="bottom-end"
               >
                 <CustomMenu.MenuItem>
-                  <div
+                  <button
+                    type="button"
                     className="flex cursor-pointer items-center gap-x-1 font-medium text-danger-primary"
                     data-ph-element={MEMBER_TRACKER_ELEMENTS.PROJECT_MEMBER_TABLE_CONTEXT_MENU}
                     onClick={() => setRemoveMemberModal(rowData)}
                   >
                     <CircleMinus className="size-3.5 flex-shrink-0" />
                     {rowData.member?.id === currentUser?.id ? "Leave " : "Remove "}
-                  </div>
+                  </button>
                 </CustomMenu.MenuItem>
               </CustomMenu>
             )}
@@ -127,17 +137,15 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
   const roleLabel = ROLE[rowData.original_role ?? EUserPermissions.GUEST];
   const isCurrentUser = currentUser?.id === rowData.member.id;
   const isRowDataWorkspaceAdmin = [EUserPermissions.ADMIN].includes(
-    Number(getWorkspaceMemberDetails(rowData.member.id)?.role) ?? EUserPermissions.GUEST
+    getNumericRole(getWorkspaceMemberDetails(rowData.member.id)?.role)
   );
   const isCurrentUserWorkspaceAdmin = currentUser
-    ? [EUserPermissions.ADMIN].includes(
-        Number(getWorkspaceMemberDetails(currentUser.id)?.role) ?? EUserPermissions.GUEST
-      )
+    ? [EUserPermissions.ADMIN].includes(getNumericRole(getWorkspaceMemberDetails(currentUser.id)?.role))
     : false;
   const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
 
   const isCurrentUserProjectAdmin = currentProjectRole
-    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(Number(currentProjectRole) ?? EUserPermissions.GUEST)
+    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(getNumericRole(currentProjectRole))
     : false;
 
   // logic
@@ -221,16 +229,14 @@ export const WorkflowRolesColumn = observer(function WorkflowRolesColumn(props: 
   const currentWorkflowRoles = rowData.workflow_roles ?? [];
   const isCurrentUser = currentUser?.id === rowData.member.id;
   const isRowDataWorkspaceAdmin = [EUserPermissions.ADMIN].includes(
-    Number(getWorkspaceMemberDetails(rowData.member.id)?.role) ?? EUserPermissions.GUEST
+    getNumericRole(getWorkspaceMemberDetails(rowData.member.id)?.role)
   );
   const isCurrentUserWorkspaceAdmin = currentUser
-    ? [EUserPermissions.ADMIN].includes(
-        Number(getWorkspaceMemberDetails(currentUser.id)?.role) ?? EUserPermissions.GUEST
-      )
+    ? [EUserPermissions.ADMIN].includes(getNumericRole(getWorkspaceMemberDetails(currentUser.id)?.role))
     : false;
   const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
   const isCurrentUserProjectAdmin = currentProjectRole
-    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(Number(currentProjectRole) ?? EUserPermissions.GUEST)
+    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(getNumericRole(currentProjectRole))
     : false;
   const isEditable =
     (isCurrentUserWorkspaceAdmin && isCurrentUser) ||
@@ -241,17 +247,20 @@ export const WorkflowRolesColumn = observer(function WorkflowRolesColumn(props: 
       ? currentWorkflowRoles.filter((role) => role !== workflowRole)
       : [...currentWorkflowRoles, workflowRole];
 
-    await updateMemberWorkflowRoles(workspaceSlug.toString(), projectId.toString(), rowData.member.id, nextWorkflowRoles).catch(
-      (err) => {
-        const error = err?.error;
-        const errorString = Array.isArray(error) ? error[0] : error;
-        setToast({
-          type: TOAST_TYPE.ERROR,
-          title: "Workflow roles not updated.",
-          message: errorString ?? "An error occurred while updating workflow roles. Please try again.",
-        });
-      }
-    );
+    await updateMemberWorkflowRoles(
+      workspaceSlug.toString(),
+      projectId.toString(),
+      rowData.member.id,
+      nextWorkflowRoles
+    ).catch((err) => {
+      const error = err?.error;
+      const errorString = Array.isArray(error) ? error[0] : error;
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: "Workflow roles not updated.",
+        message: errorString ?? "An error occurred while updating workflow roles. Please try again.",
+      });
+    });
   };
 
   return (
