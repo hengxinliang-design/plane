@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 // Plane Imports
 import { ORGANIZATION_SIZE, EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
@@ -15,7 +16,7 @@ import { EditIcon } from "@plane/propel/icons";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { IWorkspace } from "@plane/types";
 import { CustomSelect, Input } from "@plane/ui";
-import { cn, copyUrlToClipboard, getFileURL, validateWorkspaceName } from "@plane/utils";
+import { cn, copyUrlToClipboard, getFileURL, validateSlug, validateWorkspaceName } from "@plane/utils";
 // components
 import { WorkspaceImageUploadModal } from "@/components/core/modals/workspace-image-upload-modal";
 import { TimezoneSelect } from "@/components/global/timezone-select";
@@ -40,6 +41,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
   // store hooks
   const { currentWorkspace, updateWorkspace } = useWorkspace();
   const { allowPermissions } = useUserPermissions();
+  const router = useRouter();
   const { t } = useTranslation();
 
   // form info
@@ -47,6 +49,7 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
     handleSubmit,
     control,
     reset,
+    setError,
     watch,
     formState: { errors },
   } = useForm<IWorkspace>({
@@ -59,22 +62,37 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
     if (!currentWorkspace) return;
 
     setIsLoading(true);
+    const nextSlug = formData.slug.toLocaleLowerCase().trim().replace(/ /g, "-");
 
     const payload: Partial<IWorkspace> = {
       name: formData.name,
+      slug: nextSlug,
       organization_size: formData.organization_size,
       timezone: formData.timezone,
     };
 
     try {
-      await updateWorkspace(currentWorkspace.slug, payload);
+      const updatedWorkspace = await updateWorkspace(currentWorkspace.slug, payload);
       setToast({
         title: "Success!",
         type: TOAST_TYPE.SUCCESS,
         message: "Workspace updated successfully",
       });
+      if (updatedWorkspace.slug !== currentWorkspace.slug) router.push(`/${updatedWorkspace.slug}/settings`);
     } catch (err: unknown) {
       console.error(err);
+      const error = err as { slug?: string | string[] };
+      if (error?.slug)
+        setError("slug", {
+          type: "server",
+          message: Array.isArray(error.slug) ? error.slug[0] : error.slug,
+        });
+      else
+        setToast({
+          title: "Error!",
+          type: TOAST_TYPE.ERROR,
+          message: "Workspace could not be updated. Please try again.",
+        });
     } finally {
       setTimeout(() => {
         setIsLoading(false);
@@ -246,24 +264,32 @@ export const WorkspaceDetails = observer(function WorkspaceDetails() {
               <h4 className="text-body-sm-medium text-tertiary">{t("workspace_settings.settings.general.url")}</h4>
               <Controller
                 control={control}
-                name="url"
-                render={({ field: { onChange, ref } }) => (
-                  <Input
-                    id="url"
-                    name="url"
-                    type="url"
-                    value={`${
-                      typeof window !== "undefined" &&
-                      window.location.origin.replace("http://", "").replace("https://", "")
-                    }/${currentWorkspace.slug}`}
-                    onChange={onChange}
-                    ref={ref}
-                    hasError={Boolean(errors.url)}
-                    className="w-full cursor-not-allowed rounded-md !bg-layer-1"
-                    disabled
-                  />
+                name="slug"
+                rules={{
+                  required: t("common.errors.required"),
+                  validate: (value) => validateSlug(value),
+                }}
+                render={({ field: { onChange, value, ref } }) => (
+                  <div className="flex w-full items-center rounded-md border border-subtle bg-layer-2 px-3">
+                    <span className="text-12 whitespace-nowrap text-secondary">
+                      {typeof window !== "undefined" &&
+                        `${window.location.origin.replace("http://", "").replace("https://", "")}/`}
+                    </span>
+                    <Input
+                      id="slug"
+                      name="slug"
+                      type="text"
+                      value={value?.toLocaleLowerCase().trim().replace(/ /g, "-") ?? ""}
+                      onChange={(e) => onChange(e.target.value.toLocaleLowerCase().trim().replace(/ /g, "-"))}
+                      ref={ref}
+                      hasError={Boolean(errors.slug)}
+                      className="block w-full rounded-md border-none bg-transparent !px-0 py-2 text-12"
+                      disabled={!isAdmin}
+                    />
+                  </div>
                 )}
               />
+              {errors.slug && <p className="text-caption-sm-regular text-danger-primary">{errors.slug.message}</p>}
             </div>
             <div className="flex flex-col gap-2">
               <h4 className="text-body-sm-medium text-tertiary">

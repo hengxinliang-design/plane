@@ -51,6 +51,7 @@ class WorkSpaceSerializer(DynamicBaseSerializer):
         return value
 
     def validate_slug(self, value):
+        value = value.lower().strip()
         # Check if the slug is restricted
         if value in RESTRICTED_WORKSPACE_SLUGS:
             raise serializers.ValidationError("Slug is not valid")
@@ -59,6 +60,8 @@ class WorkSpaceSerializer(DynamicBaseSerializer):
             raise serializers.ValidationError(
                 "Slug can only contain letters, numbers, hyphens (-), and underscores (_)"
             )
+        if Workspace.objects.filter(slug__iexact=value).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise serializers.ValidationError("The workspace with the slug already exists")
         return value
 
     class Meta:
