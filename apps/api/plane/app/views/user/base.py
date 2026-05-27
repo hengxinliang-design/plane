@@ -315,7 +315,7 @@ class UserEndpoint(BaseViewSet):
         Session.objects.filter(user_id=request.user.id).delete()
 
         # Profile updates
-        profile = Profile.objects.get(user=user)
+        profile, _ = Profile.objects.get_or_create(user=user)
 
         # Reset onboarding
         profile.last_workspace_id = None
@@ -363,7 +363,7 @@ class UserSessionEndpoint(BaseAPIView):
 
 class UpdateUserOnBoardedEndpoint(BaseAPIView):
     def patch(self, request):
-        profile = Profile.objects.get(user_id=request.user.id)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
         profile.is_onboarded = request.data.get("is_onboarded", False)
         profile.save()
         return Response({"message": "Updated successfully"}, status=status.HTTP_200_OK)
@@ -371,7 +371,7 @@ class UpdateUserOnBoardedEndpoint(BaseAPIView):
 
 class UpdateUserTourCompletedEndpoint(BaseAPIView):
     def patch(self, request):
-        profile = Profile.objects.get(user_id=request.user.id)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
         profile.is_tour_completed = request.data.get("is_tour_completed", False)
         profile.save()
         return Response({"message": "Updated successfully"}, status=status.HTTP_200_OK)
@@ -412,12 +412,12 @@ class ProfileEndpoint(BaseAPIView):
     @method_decorator(cache_control(private=True, max_age=12))
     @method_decorator(vary_on_cookie)
     def get(self, request):
-        profile = Profile.objects.get(user=request.user)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
         serializer = ProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request):
-        profile = Profile.objects.get(user=request.user)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
         serializer = ProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()

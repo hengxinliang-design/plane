@@ -99,7 +99,7 @@ class UserMeSettingsSerializer(BaseSerializer):
         workspace_invites = WorkspaceMemberInvite.objects.filter(email=obj.email).count()
 
         # profile
-        profile = Profile.objects.get(user=obj)
+        profile, _ = Profile.objects.get_or_create(user=obj)
         if (
             profile.last_workspace_id is not None
             and Workspace.objects.filter(
