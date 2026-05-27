@@ -104,6 +104,8 @@ services:
       args:
         DOCKER_BUILDKIT: 1
     restart: always
+    env_file:
+      - ./apps/live/.env
 
   plane-db:
     container_name: plane-db
@@ -157,6 +159,8 @@ services:
     build:
       context: ./apps/proxy
       dockerfile: Dockerfile.ce
+    env_file:
+      - .env
     restart: always
     ports:
       - ${LISTEN_HTTP_PORT}:80
