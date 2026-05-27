@@ -28,6 +28,7 @@ from plane.license.utils.instance_value import get_configuration_value
 
 class EmailCheckSpaceEndpoint(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
 
     throttle_classes = [AuthenticationThrottle]
 
