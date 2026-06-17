@@ -19,6 +19,7 @@ import { WorkspaceLevelWorkItemFiltersHOC } from "@/components/work-item-filters
 import { WorkItemFiltersRow } from "@/components/work-item-filters/filters-row";
 // hooks
 import { useIssues } from "@/hooks/store/use-issues";
+import { useProjectState } from "@/hooks/store/use-project-state";
 import { IssuesStoreContext } from "@/hooks/use-issue-layout-store";
 
 type Props = {
@@ -33,6 +34,7 @@ export const ProfileIssuesPage = observer(function ProfileIssuesPage(props: Prop
     issues: { setViewId },
     issuesFilter: { issueFilters, fetchFilters, updateFilterExpression },
   } = useIssues(EIssuesStoreType.PROFILE);
+  const { fetchWorkspaceStates } = useProjectState();
   // derived values
   const activeLayout = issueFilters?.displayFilters?.layout || undefined;
 
@@ -44,7 +46,7 @@ export const ProfileIssuesPage = observer(function ProfileIssuesPage(props: Prop
     workspaceSlug && userId ? `CURRENT_WORKSPACE_PROFILE_ISSUES_${workspaceSlug}_${userId}` : null,
     async () => {
       if (workspaceSlug && userId) {
-        await fetchFilters(workspaceSlug, userId);
+        await Promise.all([fetchFilters(workspaceSlug, userId), fetchWorkspaceStates(workspaceSlug.toString())]);
       }
     },
     { revalidateIfStale: false, revalidateOnFocus: false }
