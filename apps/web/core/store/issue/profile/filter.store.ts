@@ -229,7 +229,13 @@ export class ProfileIssuesFilter extends IssueFilterHelperStore implements IProf
             });
           });
 
-          this.rootIssueStore.profileIssues.fetchIssuesWithExistingPagination(workspaceSlug, userId, "mutation");
+          if (this.getShouldClearIssues(updatedDisplayFilters)) {
+            this.rootIssueStore.profileIssues.clear(true);
+          }
+
+          if (this.getShouldReFetchIssues(updatedDisplayFilters)) {
+            this.rootIssueStore.profileIssues.fetchIssuesWithExistingPagination(workspaceSlug, userId, "mutation");
+          }
 
           this.handleIssuesLocalFilters.set(EIssuesStoreType.PROFILE, type, workspaceSlug, userId, undefined, {
             display_filters: _filters.displayFilters,

@@ -63,6 +63,7 @@ export interface IProfileIssues extends IBaseIssuesStore {
 
 export class ProfileIssues extends BaseIssuesStore implements IProfileIssues {
   currentView: TProfileViews = "assigned";
+  private fetchRequestId = 0;
   // filter store
   issueFilterStore: IProfileIssuesFilter;
   // services
@@ -128,6 +129,7 @@ export class ProfileIssues extends BaseIssuesStore implements IProfileIssues {
     isExistingPaginationOptions: boolean = false
   ) => {
     try {
+      const requestId = ++this.fetchRequestId;
       const requestView = view;
 
       // set loader and clear store
@@ -157,7 +159,7 @@ export class ProfileIssues extends BaseIssuesStore implements IProfileIssues {
         signal: this.controller.signal,
       });
 
-      if (this.currentView !== requestView) return response;
+      if (requestId !== this.fetchRequestId || this.currentView !== requestView) return response;
 
       // after fetching issues, call the base method to process the response further
       this.onfetchIssues(response, options, workspaceSlug, undefined, undefined, !isExistingPaginationOptions);
