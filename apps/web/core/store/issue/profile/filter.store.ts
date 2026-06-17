@@ -198,6 +198,7 @@ export class ProfileIssuesFilter extends IssueFilterHelperStore implements IProf
       switch (type) {
         case EIssueFilterType.DISPLAY_FILTERS: {
           const updatedDisplayFilters = filters as IIssueDisplayFilterOptions;
+          const isLayoutChange = Object.prototype.hasOwnProperty.call(updatedDisplayFilters, "layout");
           _filters.displayFilters = { ..._filters.displayFilters, ...updatedDisplayFilters };
 
           // set sub_group_by to null if group_by is set to null
@@ -233,7 +234,25 @@ export class ProfileIssuesFilter extends IssueFilterHelperStore implements IProf
             this.rootIssueStore.profileIssues.clear(true);
           }
 
-          if (this.getShouldReFetchIssues(updatedDisplayFilters)) {
+          if (isLayoutChange) {
+            const nextLayout = _filters.displayFilters.layout;
+            const perPageCount =
+              nextLayout === "kanban"
+                ? _filters.displayFilters.sub_group_by
+                  ? 10
+                  : 30
+                : _filters.displayFilters.group_by
+                  ? 50
+                  : 100;
+
+            this.rootIssueStore.profileIssues.fetchIssues(
+              workspaceSlug,
+              userId,
+              "mutation",
+              { canGroup: true, perPageCount },
+              this.rootIssueStore.profileIssues.currentView
+            );
+          } else if (this.getShouldReFetchIssues(updatedDisplayFilters)) {
             this.rootIssueStore.profileIssues.fetchIssuesWithExistingPagination(workspaceSlug, userId, "mutation");
           }
 
