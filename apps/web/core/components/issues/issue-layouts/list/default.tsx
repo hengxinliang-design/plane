@@ -36,6 +36,20 @@ import { getGroupByColumns, isWorkspaceLevel, isSubGrouped } from "../utils";
 import { ListGroup } from "./list-group";
 import type { TRenderQuickActions } from "./list-view-types";
 
+const getUngroupedIssueIds = (groupedIssueIds: TGroupedIssues): string[] => {
+  const allIssueIds = groupedIssueIds[ALL_ISSUES];
+
+  if (Array.isArray(allIssueIds) && allIssueIds.length > 0) return allIssueIds;
+
+  return Array.from(
+    new Set(
+      Object.entries(groupedIssueIds).flatMap(([groupId, issueIds]) =>
+        groupId === ALL_ISSUES || !Array.isArray(issueIds) ? [] : issueIds
+      )
+    )
+  );
+};
+
 export interface IList {
   groupedIssueIds: TGroupedIssues;
   issuesMap: TIssueMap;
@@ -111,10 +125,11 @@ export const List = observer(function List(props: IList) {
 
   const getGroupIndex = (groupId: string | undefined) => groups.findIndex(({ id }) => id === groupId);
 
-  const is_list = group_by === null ? true : false;
+  const is_list = group_by === null;
 
   // create groupIds array and entities object for bulk ops
   const groupIds = groups.map((g) => g.id);
+  const ungroupedIssueIds = is_list ? getUngroupedIssueIds(groupedIssueIds) : [];
   const orderedGroups: Record<string, string[]> = {};
   groupIds.forEach((gID) => {
     orderedGroups[gID] = [];
@@ -122,7 +137,7 @@ export const List = observer(function List(props: IList) {
   let entities: Record<string, string[]> = {};
 
   if (is_list) {
-    entities = Object.assign(orderedGroups, { [groupIds[0]]: groupedIssueIds[ALL_ISSUES] ?? [] });
+    entities = Object.assign(orderedGroups, { [groupIds[0]]: ungroupedIssueIds });
   } else if (!isSubGrouped(groupedIssueIds)) {
     entities = Object.assign(orderedGroups, { ...groupedIssueIds });
   } else {
@@ -145,7 +160,7 @@ export const List = observer(function List(props: IList) {
                 {groups.map((group: IGroupByColumn) => (
                   <ListGroup
                     key={group.id}
-                    groupIssueIds={groupedIssueIds?.[group.id]}
+                    groupIssueIds={is_list ? ungroupedIssueIds : groupedIssueIds?.[group.id]}
                     issuesMap={issuesMap}
                     group_by={group_by}
                     group={group}
