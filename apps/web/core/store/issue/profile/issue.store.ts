@@ -128,6 +128,8 @@ export class ProfileIssues extends BaseIssuesStore implements IProfileIssues {
     isExistingPaginationOptions: boolean = false
   ) => {
     try {
+      const requestView = view;
+
       // set loader and clear store
       runInAction(() => {
         this.setLoader(loadType);
@@ -154,6 +156,8 @@ export class ProfileIssues extends BaseIssuesStore implements IProfileIssues {
       const response = await this.userService.getUserProfileIssues(workspaceSlug, userId, params, {
         signal: this.controller.signal,
       });
+
+      if (this.currentView !== requestView) return response;
 
       // after fetching issues, call the base method to process the response further
       this.onfetchIssues(response, options, workspaceSlug, undefined, undefined, !isExistingPaginationOptions);

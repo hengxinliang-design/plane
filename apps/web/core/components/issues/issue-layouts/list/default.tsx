@@ -38,16 +38,17 @@ import type { TRenderQuickActions } from "./list-view-types";
 
 const getUngroupedIssueIds = (groupedIssueIds: TGroupedIssues): string[] => {
   const allIssueIds = groupedIssueIds[ALL_ISSUES];
-
-  if (Array.isArray(allIssueIds) && allIssueIds.length > 0) return allIssueIds;
-
-  return Array.from(
+  const flattenedIssueIds = Array.from(
     new Set(
       Object.entries(groupedIssueIds).flatMap(([groupId, issueIds]) =>
         groupId === ALL_ISSUES || !Array.isArray(issueIds) ? [] : issueIds
       )
     )
   );
+
+  if (Array.isArray(allIssueIds) && allIssueIds.length >= flattenedIssueIds.length) return allIssueIds;
+
+  return flattenedIssueIds;
 };
 
 export interface IList {
