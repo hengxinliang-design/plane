@@ -43,7 +43,7 @@ export const ProfileIssuesPage = observer(function ProfileIssuesPage(props: Prop
   }, [type, setViewId]);
 
   useSWR(
-    workspaceSlug && userId ? `CURRENT_WORKSPACE_PROFILE_ISSUES_${workspaceSlug}_${userId}` : null,
+    workspaceSlug && userId ? `CURRENT_WORKSPACE_PROFILE_ISSUES_${workspaceSlug}_${userId}_${type}` : null,
     async () => {
       if (workspaceSlug && userId) {
         await Promise.all([fetchFilters(workspaceSlug, userId), fetchWorkspaceStates(workspaceSlug.toString())]);

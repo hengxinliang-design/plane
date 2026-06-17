@@ -102,7 +102,7 @@ export const List = observer(function List(props: IList) {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const groups = getGroupByColumns({
+  const resolvedGroups = getGroupByColumns({
     groupBy: group_by as GroupByColumnTypes,
     includeNone: true,
     isWorkspaceLevel: isWorkspaceLevel(storeType),
@@ -122,6 +122,22 @@ export const List = observer(function List(props: IList) {
     );
   }, [containerRef]);
 
+  const isGroupedIssueIdsSubGrouped = isSubGrouped(groupedIssueIds);
+  const missingResponseGroups =
+    resolvedGroups && !isGroupedIssueIdsSubGrouped
+      ? Object.entries(groupedIssueIds)
+          .filter(([groupId, issueIds]) => groupId !== ALL_ISSUES && Array.isArray(issueIds) && issueIds.length > 0)
+          .filter(([groupId]) => !resolvedGroups.some((group) => group.id === groupId))
+          .map(([groupId]) => ({
+            id: groupId,
+            name: "Other",
+            payload: {},
+            icon: undefined,
+          }))
+      : [];
+  const groups =
+    resolvedGroups && missingResponseGroups.length > 0 ? [...resolvedGroups, ...missingResponseGroups] : resolvedGroups;
+
   if (!groups) return null;
 
   const getGroupIndex = (groupId: string | undefined) => groups.findIndex(({ id }) => id === groupId);
@@ -139,7 +155,7 @@ export const List = observer(function List(props: IList) {
 
   if (is_list) {
     entities = Object.assign(orderedGroups, { [groupIds[0]]: ungroupedIssueIds });
-  } else if (!isSubGrouped(groupedIssueIds)) {
+  } else if (!isGroupedIssueIdsSubGrouped) {
     entities = Object.assign(orderedGroups, { ...groupedIssueIds });
   } else {
     entities = orderedGroups;
