@@ -141,7 +141,9 @@ export class ProfileIssuesFilter extends IssueFilterHelperStore implements IProf
     const _filters = this.handleIssuesLocalFilters.get(EIssuesStoreType.PROFILE, workspaceSlug, userId, undefined);
 
     const richFilters: TWorkItemFilterExpression = _filters?.rich_filters;
-    const displayFilters: IIssueDisplayFilterOptions = this.computedDisplayFilters(_filters?.display_filters);
+    const displayFilters: IIssueDisplayFilterOptions = this.computedDisplayFilters(_filters?.display_filters, {
+      group_by: "state",
+    });
     const displayProperties: IIssueDisplayProperties = this.computedDisplayProperties(_filters?.display_properties);
     const kanbanFilters = {
       group_by: _filters?.kanban_filters?.group_by || [],
@@ -214,10 +216,10 @@ export class ProfileIssuesFilter extends IssueFilterHelperStore implements IProf
             _filters.displayFilters.sub_group_by = null;
             updatedDisplayFilters.sub_group_by = null;
           }
-          // set group_by to priority if layout is switched to kanban and group_by is null
+          // set group_by to state if layout is switched to kanban and group_by is null
           if (_filters.displayFilters.layout === "kanban" && _filters.displayFilters.group_by === null) {
-            _filters.displayFilters.group_by = "priority";
-            updatedDisplayFilters.group_by = "priority";
+            _filters.displayFilters.group_by = "state";
+            updatedDisplayFilters.group_by = "state";
           }
 
           runInAction(() => {
