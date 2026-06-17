@@ -151,6 +151,7 @@ class WorkspaceUserProfileIssuesEndpoint(BaseAPIView):
         if is_assigned_view:
             filters.pop("assignees__in", None)
             filters.pop("issue_assignee__deleted_at__isnull", None)
+            filters.pop("parent__isnull", None)
 
         order_by_param = request.GET.get("order_by", "-created_at")
         relation_filter = (
