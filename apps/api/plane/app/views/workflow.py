@@ -13,7 +13,7 @@ from plane.app.serializers import (
     StateTransitionRuleSerializer,
 )
 from .base import BaseAPIView, BaseViewSet
-from plane.db.models import Issue, IssueApprovalRequest, IssueWorkflowMember, StateTransitionRule
+from plane.db.models import Issue, IssueApprovalRequest, IssueSubscriber, IssueWorkflowMember, StateTransitionRule
 from plane.utils.host import base_host
 from plane.utils.workflow_approval import apply_approval_request
 
@@ -73,6 +73,23 @@ class StateTransitionRuleViewSet(BaseViewSet):
 
 
 class IssueWorkflowMemberEndpoint(BaseAPIView):
+    def _subscribe_members(self, issue, project_id, member_ids, actor):
+        IssueSubscriber.objects.bulk_create(
+            [
+                IssueSubscriber(
+                    issue=issue,
+                    project_id=project_id,
+                    workspace_id=issue.workspace_id,
+                    subscriber_id=member_id,
+                    created_by=actor,
+                    updated_by=actor,
+                )
+                for member_id in member_ids
+            ],
+            batch_size=25,
+            ignore_conflicts=True,
+        )
+
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
     def get(self, request, slug, project_id, issue_id):
         issue = Issue.objects.filter(workspace__slug=slug, project_id=project_id, pk=issue_id).first()
@@ -141,6 +158,7 @@ class IssueWorkflowMemberEndpoint(BaseAPIView):
                 ],
                 batch_size=25,
             )
+            self._subscribe_members(issue, project_id, data["co_worker_ids"], request.user)
 
         members = IssueWorkflowMember.objects.filter(issue=issue).select_related("member")
         approver = members.filter(role_type=IssueWorkflowMember.RoleType.APPROVER).first()

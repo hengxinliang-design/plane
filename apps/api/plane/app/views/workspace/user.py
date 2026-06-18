@@ -45,7 +45,6 @@ from plane.db.models import (
     IssueActivity,
     FileAsset,
     IssueLink,
-    IssueSubscriber,
     IssueWorkflowMember,
     Project,
     ProjectMember,
@@ -74,6 +73,19 @@ def user_assigned_or_approver_filter(user_id, prefix=""):
             f"{prefix}workflow_members__member_id": user_id,
             f"{prefix}workflow_members__role_type": IssueWorkflowMember.RoleType.APPROVER,
             f"{prefix}workflow_members__deleted_at__isnull": True,
+        }
+    )
+
+
+def user_created_filter(user_id, prefix=""):
+    return Q(**{f"{prefix}created_by_id": user_id})
+
+
+def user_subscribed_filter(user_id, prefix=""):
+    return Q(
+        **{
+            f"{prefix}issue_subscribers__subscriber_id": user_id,
+            f"{prefix}issue_subscribers__deleted_at__isnull": True,
         }
     )
 
@@ -148,17 +160,31 @@ class WorkspaceUserProfileIssuesEndpoint(BaseAPIView):
     def get(self, request, slug, user_id):
         filters = issue_filters(request.query_params, "GET")
         is_assigned_view = str(request.GET.get("assignees", "")) == str(user_id)
+        is_created_view = str(request.GET.get("created_by", "")) == str(user_id)
+        is_subscribed_view = str(request.GET.get("subscriber", "")) == str(user_id)
         if is_assigned_view:
             filters.pop("assignees__in", None)
             filters.pop("issue_assignee__deleted_at__isnull", None)
             filters.pop("parent__isnull", None)
+        elif is_created_view:
+            filters.pop("created_by__in", None)
+        elif is_subscribed_view:
+            filters.pop("issue_subscribers__subscriber_id__in", None)
+            filters.pop("issue_subscribers__deleted_at__isnull", None)
 
         order_by_param = request.GET.get("order_by", "-created_at")
-        relation_filter = (
-            user_assigned_or_approver_filter(user_id)
-            if is_assigned_view
-            else Q(assignees__in=[user_id]) | Q(created_by_id=user_id) | Q(issue_subscribers__subscriber_id=user_id)
-        )
+        if is_assigned_view:
+            relation_filter = user_assigned_or_approver_filter(user_id)
+        elif is_created_view:
+            relation_filter = user_created_filter(user_id)
+        elif is_subscribed_view:
+            relation_filter = user_subscribed_filter(user_id)
+        else:
+            relation_filter = (
+                user_assigned_or_approver_filter(user_id)
+                | user_created_filter(user_id)
+                | user_subscribed_filter(user_id)
+            )
         issue_queryset = Issue.issue_objects.filter(
             id__in=Issue.issue_objects.filter(relation_filter, workspace__slug=slug)
             .distinct()
@@ -428,6 +454,7 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
     def get(self, request, slug, user_id):
         filters = issue_filters(request.query_params, "GET")
         assigned_or_approver_filter = user_assigned_or_approver_filter(user_id)
+        subscribed_filter = user_subscribed_filter(user_id)
 
         state_distribution = (
             Issue.issue_objects.filter(
@@ -516,14 +543,14 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
         )
 
         subscribed_issues_count = (
-            IssueSubscriber.objects.filter(
+            Issue.issue_objects.filter(
+                subscribed_filter,
                 workspace__slug=slug,
-                subscriber_id=user_id,
                 project__project_projectmember__member=request.user,
                 project__project_projectmember__is_active=True,
-                project__archived_at__isnull=True,
             )
             .filter(**filters)
+            .distinct()
             .count()
         )
 

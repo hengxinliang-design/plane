@@ -4,6 +4,7 @@
 
 # Python imports
 import json
+import os
 from datetime import timedelta
 
 # Third party imports
@@ -21,6 +22,9 @@ from plane.utils.exception_logger import log_exception
 
 @shared_task
 def archive_and_close_old_issues():
+    if os.environ.get("ENABLE_ARCHIVE_AND_CLOSE_OLD_ISSUES", "0") != "1":
+        return
+
     archive_old_issues()
     close_old_issues()
 
