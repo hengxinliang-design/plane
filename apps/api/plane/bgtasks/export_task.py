@@ -4,6 +4,7 @@
 
 # Python imports
 import io
+import os
 import zipfile
 from typing import List
 import boto3
@@ -62,11 +63,12 @@ def upload_to_s3(zip_file: io.BytesIO, workspace_id: UUID, token_id: str, slug: 
         )
 
         # Generate presigned url for the uploaded file with different base
+        public_endpoint_url = os.environ.get("AWS_S3_PUBLIC_ENDPOINT_URL") or (
+            f"{settings.AWS_S3_URL_PROTOCOL}//{str(settings.AWS_S3_CUSTOM_DOMAIN).replace('/uploads', '')}/"
+        )
         presign_s3 = boto3.client(
             "s3",
-            endpoint_url=(
-                f"{settings.AWS_S3_URL_PROTOCOL}//{str(settings.AWS_S3_CUSTOM_DOMAIN).replace('/uploads', '')}/"
-            ),
+            endpoint_url=public_endpoint_url.rstrip("/"),
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             config=Config(signature_version="s3v4"),
@@ -132,6 +134,7 @@ def issue_export_task(
     token_id: str,
     multiple: bool,
     slug: str,
+    module_id: str | None = None,
 ):
     """
     Export issues from the workspace.
@@ -188,6 +191,12 @@ def issue_export_task(
                 ),
             )
         )
+
+        if module_id:
+            workspace_issues = workspace_issues.filter(
+                issue_module__module_id=module_id,
+                issue_module__deleted_at__isnull=True,
+            ).distinct()
 
         # Create exporter for the specified format
         try:

@@ -4,11 +4,12 @@
  * See the LICENSE file for details.
  */
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { observer } from "mobx-react";
-import { MoreHorizontal } from "lucide-react";
+import { Download, MoreHorizontal } from "lucide-react";
 // plane imports
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
+import { useTranslation } from "@plane/i18n";
 import { IconButton } from "@plane/propel/icon-button";
 import { TOAST_TYPE, setToast } from "@plane/propel/toast";
 import type { TContextMenuItem } from "@plane/ui";
@@ -21,6 +22,7 @@ import { ArchiveModuleModal, CreateUpdateModuleModal, DeleteModuleModal } from "
 import { useModule } from "@/hooks/store/use-module";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
+import { ProjectExportService } from "@/services/project/project-export.service";
 
 type Props = {
   parentRef: React.RefObject<HTMLDivElement>;
@@ -30,14 +32,18 @@ type Props = {
   customClassName?: string;
 };
 
+const projectExportService = new ProjectExportService();
+
 export const ModuleQuickActions = observer(function ModuleQuickActions(props: Props) {
   const { parentRef, moduleId, projectId, workspaceSlug, customClassName } = props;
   // router
   const router = useAppRouter();
+  const { t } = useTranslation();
   // states
   const [editModal, setEditModal] = useState(false);
   const [archiveModuleModal, setArchiveModuleModal] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   // store hooks
   const { allowPermissions } = useUserPermissions();
 
@@ -54,15 +60,42 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
   );
 
   const moduleLink = `${workspaceSlug}/projects/${projectId}/modules/${moduleId}`;
-  const handleCopyText = () =>
-    copyUrlToClipboard(moduleLink).then(() => {
+  const handleCopyText = async () => {
+    await copyUrlToClipboard(moduleLink);
+    setToast({
+      type: TOAST_TYPE.SUCCESS,
+      title: "Link Copied!",
+      message: "Module link copied to clipboard.",
+    });
+  };
+  const handleOpenInNewTab = () => window.open(`/${moduleLink}`, "_blank");
+
+  const handleCsvExport = useCallback(async () => {
+    if (isExporting) return;
+
+    setIsExporting(true);
+    try {
+      await projectExportService.csvExport(workspaceSlug, {
+        provider: "csv",
+        project: [projectId],
+        multiple: false,
+        module: moduleId,
+      });
       setToast({
         type: TOAST_TYPE.SUCCESS,
-        title: "Link Copied!",
-        message: "Module link copied to clipboard.",
+        title: t("workspace_settings.settings.exports.modal.toasts.success.title"),
+        message: t("workspace_settings.settings.exports.modal.toasts.success.message", { entity: "CSV" }),
       });
-    });
-  const handleOpenInNewTab = () => window.open(`/${moduleLink}`, "_blank");
+    } catch (_error) {
+      setToast({
+        type: TOAST_TYPE.ERROR,
+        title: t("error"),
+        message: t("workspace_settings.settings.exports.modal.toasts.error.message"),
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [isExporting, moduleId, projectId, t, workspaceSlug]);
 
   const handleRestoreModule = async () => {
     try {
@@ -140,6 +173,16 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
         closeOnSelect
         buttonClassName={customClassName}
       >
+        {isEditingAllowed && (
+          <CustomMenu.MenuItem
+            onClick={() => void handleCsvExport()}
+            className="flex items-center gap-2"
+            disabled={isExporting}
+          >
+            <Download className="h-3 w-3 flex-shrink-0" />
+            <div>{t("exporter.csv.download")}</div>
+          </CustomMenu.MenuItem>
+        )}
         {MENU_ITEMS.map((item) => {
           if (item.shouldRender === false) return null;
           return (

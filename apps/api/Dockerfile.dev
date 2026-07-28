@@ -28,8 +28,8 @@ WORKDIR /code
 COPY requirements.txt ./requirements.txt
 ADD requirements ./requirements
 
-# Install the local development settings
-RUN pip install -r requirements/local.txt --compile --no-cache-dir
+# Install local runtime and test dependencies so the development container can run pytest.
+RUN pip install -r requirements/local.txt -r requirements/test.txt --compile --no-cache-dir
 
 
 COPY . .
@@ -43,4 +43,3 @@ RUN chmod -R 777 /code
 EXPOSE 8000
 
 CMD [ "./bin/docker-entrypoint-api-local.sh" ]
-

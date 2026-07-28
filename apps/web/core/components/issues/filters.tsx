@@ -41,7 +41,6 @@ const LAYOUTS = [
   EIssueLayoutTypes.SPREADSHEET,
   EIssueLayoutTypes.GANTT,
 ];
-
 export const HeaderFilters = observer(function HeaderFilters(props: Props) {
   const {
     currentProjectDetails,

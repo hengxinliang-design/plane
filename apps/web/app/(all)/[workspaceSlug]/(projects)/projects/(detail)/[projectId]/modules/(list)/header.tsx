@@ -15,6 +15,7 @@ import { ModuleIcon } from "@plane/propel/icons";
 import { Breadcrumbs, Header } from "@plane/ui";
 // components
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
+import { ProjectIssuesExportMenu } from "@/components/exporter/project-issues-export-menu";
 import { ModuleViewHeader } from "@/components/modules";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
@@ -64,6 +65,10 @@ export const ModulesListHeader = observer(function ModulesListHeader() {
       </Header.LeftItem>
       <Header.RightItem>
         <ModuleViewHeader />
+        <ProjectIssuesExportMenu
+          workspaceSlug={workspaceSlug?.toString() ?? ""}
+          projectId={projectId?.toString() ?? ""}
+        />
         {canUserCreateModule ? (
           <Button
             variant="primary"

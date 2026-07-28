@@ -17,8 +17,6 @@ class IssueExportSerializer(IssueSerializer):
     """
 
     identifier = serializers.SerializerMethodField()
-    project_name = serializers.CharField(source='project.name', read_only=True, default="")
-    project_identifier = serializers.CharField(source='project.identifier', read_only=True, default="")
     state_name = serializers.CharField(source='state.name', read_only=True, default="")
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True, default="")
 
@@ -28,41 +26,30 @@ class IssueExportSerializer(IssueSerializer):
     cycles = serializers.SerializerMethodField()
     modules = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
-    estimate = serializers.SerializerMethodField()
     links = serializers.SerializerMethodField()
     relations = serializers.SerializerMethodField()
-    subscribers = serializers.SerializerMethodField()
 
     class Meta(IssueSerializer.Meta):
         fields = [
-            "project_name",
-            "project_identifier",
-            "parent",
             "identifier",
             "sequence_id",
             "name",
+            "parent",
             "state_name",
             "priority",
             "assignees",
-            "subscribers",
             "created_by_name",
             "start_date",
             "target_date",
             "completed_at",
             "created_at",
             "updated_at",
-            "archived_at",
-            "estimate",
             "labels",
             "cycles",
             "modules",
             "links",
             "relations",
             "comments",
-            "sub_issues_count",
-            "link_count",
-            "attachment_count",
-            "is_draft",
         ]
 
     def get_identifier(self, obj):
@@ -70,10 +57,6 @@ class IssueExportSerializer(IssueSerializer):
 
     def get_assignees(self, obj):
         return [u.full_name for u in obj.assignees.all() if u.is_active]
-
-    def get_subscribers(self, obj):
-        """Return list of subscriber names."""
-        return [sub.subscriber.full_name for sub in obj.issue_subscribers.all() if sub.subscriber]
 
     def get_parent(self, obj):
         if not obj.parent:
@@ -92,12 +75,6 @@ class IssueExportSerializer(IssueSerializer):
 
     def get_modules(self, obj):
         return [im.module.name for im in obj.issue_module.all()]
-
-    def get_estimate(self, obj):
-        """Return estimate point value."""
-        if obj.estimate_point:
-            return obj.estimate_point.value if hasattr(obj.estimate_point, 'value') else str(obj.estimate_point)
-        return ""
 
     def get_links(self, obj):
         """Return list of issue links with titles."""

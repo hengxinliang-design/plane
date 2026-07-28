@@ -90,12 +90,12 @@ def _contains_suspicious_patterns(path: str) -> bool:
 
 def get_allowed_hosts() -> list[str]:
     """Get the allowed hosts from the settings."""
-    base_origin = settings.WEB_URL or settings.APP_BASE_URL
-
     allowed_hosts = []
-    if base_origin:
-        host = urlparse(base_origin).netloc
-        allowed_hosts.append(host)
+    for base_origin in (settings.WEB_URL, settings.APP_BASE_URL):
+        if base_origin:
+            host = urlparse(base_origin).netloc
+            if host and host not in allowed_hosts:
+                allowed_hosts.append(host)
     if settings.ADMIN_BASE_URL:
         # Get only the host
         host = urlparse(settings.ADMIN_BASE_URL).netloc
@@ -124,9 +124,13 @@ def validate_next_path(next_path: str) -> str:
     if parsed_url.scheme or parsed_url.netloc:
         next_path = parsed_url.path  # Extract only the path component
 
-    # Must start with a forward slash and not be empty
-    if not next_path or not next_path.startswith("/"):
+    if not next_path:
         return ""
+
+    # Support safe relative paths from authentication forms while keeping the
+    # final redirect rooted on the configured Plane host.
+    if not next_path.startswith("/"):
+        next_path = f"/{next_path}"
 
     # Prevent path traversal
     if ".." in next_path:

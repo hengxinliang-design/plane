@@ -22,6 +22,17 @@ from openpyxl import Workbook, load_workbook
 from plane.utils.csv_utils import sanitize_csv_row, sanitize_csv_value
 
 
+def format_export_value(value: Any, list_joiner: str = ", ") -> str:
+    """Format collection values for a human-readable spreadsheet cell."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return list_joiner.join(format_export_value(item, list_joiner) for item in value)
+    if isinstance(value, dict):
+        return "; ".join(f"{key}: {format_export_value(item, list_joiner)}" for key, item in value.items())
+    return str(value)
+
+
 class BaseFormatter(ABC):
     @abstractmethod
     def encode(self, data: List[Dict]) -> Union[str, bytes]:
@@ -55,16 +66,24 @@ class JSONFormatter(BaseFormatter):
 
 
 class CSVFormatter(BaseFormatter):
-    def __init__(self, flatten: bool = True, delimiter: str = ",", prettify_headers: bool = True):
+    def __init__(
+        self,
+        flatten: bool = True,
+        delimiter: str = ",",
+        prettify_headers: bool = True,
+        human_readable_values: bool = False,
+    ):
         """
         Args:
             flatten: Whether to flatten nested dicts.
             delimiter: CSV delimiter character.
             prettify_headers: If True, transforms 'created_by_name' → 'Created By Name'.
+            human_readable_values: If True, joins lists and formats dictionaries for spreadsheet reading.
         """
         self.flatten = flatten
         self.delimiter = delimiter
         self.prettify_headers = prettify_headers
+        self.human_readable_values = human_readable_values
 
     def _prettify_header(self, header: str) -> str:
         """Transform 'created_by_name' → 'Created By Name'"""
@@ -81,7 +100,9 @@ class CSVFormatter(BaseFormatter):
             if isinstance(value, dict):
                 items.update(self._flatten(value, new_key))
             elif isinstance(value, list):
-                items[new_key] = json.dumps(value)
+                items[new_key] = (
+                    format_export_value(value) if self.human_readable_values else json.dumps(value, ensure_ascii=False)
+                )
             else:
                 items[new_key] = value
         return items
@@ -139,7 +160,8 @@ class CSVFormatter(BaseFormatter):
             for row in data:
                 writer.writerow({k: sanitize_csv_value(row.get(k, "")) for k in fieldnames})
 
-        return output.getvalue()
+        # Excel on Windows detects UTF-8 CSV reliably when a BOM is present.
+        return "\ufeff" + output.getvalue()
 
     def decode(self, content: str, normalize_headers: bool = True) -> List[Dict]:
         """
@@ -149,7 +171,7 @@ class CSVFormatter(BaseFormatter):
             content: CSV string
             normalize_headers: If True, converts 'Display Name' → 'display_name'
         """
-        rows = list(csv.DictReader(StringIO(content), delimiter=self.delimiter))
+        rows = list(csv.DictReader(StringIO(content.lstrip("\ufeff")), delimiter=self.delimiter))
 
         # Normalize headers: 'Email' → 'email', 'Display Name' → 'display_name'
         if normalize_headers:
@@ -190,9 +212,9 @@ class XLSXFormatter(BaseFormatter):
         if value is None:
             return ""
         if isinstance(value, list):
-            return self.list_joiner.join(str(v) for v in value)
+            return format_export_value(value, self.list_joiner)
         if isinstance(value, dict):
-            return json.dumps(value)
+            return format_export_value(value, self.list_joiner)
         return value
 
     def encode(self, data: List[Dict]) -> bytes:

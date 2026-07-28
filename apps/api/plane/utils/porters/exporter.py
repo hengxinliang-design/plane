@@ -52,6 +52,8 @@ class DataExporter:
         formatter_class = self.FORMATTERS[format_type]
 
         # Apply format-specific options
+        if format_type == "csv":
+            return formatter_class(human_readable_values=True)
         if format_type == "xlsx":
             return formatter_class(list_joiner=", ")
         else:

@@ -364,6 +364,7 @@
   "re_generate": "重新生成",
   "re_generate_key": "重新生成密钥",
   "export": "导出",
+  "download": "下载",
   "member": "{count, plural, other{# 成员}}",
   "new_password_must_be_different_from_old_password": "新密码必须不同于旧密码",
   "edited": "已编辑",
@@ -853,7 +854,8 @@
     "csv": {
       "title": "CSV",
       "description": "将工作项导出为 CSV 文件。",
-      "short_description": "导出为 CSV"
+      "short_description": "导出为 CSV",
+      "download": "下载 CSV"
     },
     "excel": {
       "title": "Excel",
@@ -863,7 +865,8 @@
     "xlsx": {
       "title": "Excel",
       "description": "将工作项导出为 Excel 文件。",
-      "short_description": "导出为 Excel"
+      "short_description": "导出为 Excel",
+      "download": "下载 Excel"
     },
     "json": {
       "title": "JSON",

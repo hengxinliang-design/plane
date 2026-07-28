@@ -257,6 +257,13 @@ export const WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS: Record<string, IWorkspac
     access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER, EUserWorkspaceRoles.GUEST],
     highlight: (pathname: string, url: string) => pathname.includes(url),
   },
+  exports: {
+    key: "exports",
+    labelTranslationKey: "export",
+    href: `/settings/exports/`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string) => pathname.includes("/settings/exports"),
+  },
   drafts: {
     key: "drafts",
     labelTranslationKey: "drafts",

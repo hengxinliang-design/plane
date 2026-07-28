@@ -10,6 +10,7 @@ import { Ellipsis } from "lucide-react";
 import { Disclosure, Transition } from "@headlessui/react";
 // plane imports
 import {
+  type IWorkspaceSidebarNavigationItem,
   WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS,
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS,
   WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS_LINKS,
@@ -17,6 +18,7 @@ import {
 } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { ChevronRightIcon } from "@plane/propel/icons";
+import { EUserWorkspaceRoles } from "@plane/types";
 import { cn } from "@plane/utils";
 // components
 import { SidebarNavItem } from "@/components/sidebar/sidebar-navigation";
@@ -86,20 +88,31 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
     () =>
       WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.map((item) => {
         const preference = workspacePreferences.items[item.key];
-        return {
-          ...item,
+        return Object.assign({}, item, {
           sort_order: preference ? preference.sort_order : 0,
-        };
+        });
       }).sort((a, b) => a.sort_order - b.sort_order),
     [workspacePreferences]
   );
+  const exportsItem: IWorkspaceSidebarNavigationItem = WORKSPACE_SIDEBAR_STATIC_NAVIGATION_ITEMS["exports"] ?? {
+    key: "exports",
+    labelTranslationKey: "export",
+    href: `/settings/exports/`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string) => pathname.includes("/settings/exports"),
+  };
+  const hasStickies = filteredStaticNavigationItems.some((item) => item.key === "stickies");
 
   return (
     <>
       <div className="flex flex-col gap-0.5">
-        {filteredStaticNavigationItems.map((item, _index) => (
-          <SidebarItem key={`static_${_index}`} item={item} />
+        {filteredStaticNavigationItems.map((item) => (
+          <React.Fragment key={item.key}>
+            <SidebarItem item={item} />
+            {item.key === "stickies" && <SidebarItem item={exportsItem} />}
+          </React.Fragment>
         ))}
+        {!hasStickies && <SidebarItem item={exportsItem} />}
       </div>
       <Disclosure as="div" className="flex flex-col" defaultOpen={!!isWorkspaceMenuOpen}>
         <div className="group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-placeholder hover:bg-layer-transparent-hover">
@@ -148,11 +161,11 @@ export const SidebarMenuItems = observer(function SidebarMenuItems() {
           {isWorkspaceMenuOpen && (
             <Disclosure.Panel as="div" className="flex flex-col gap-0.5" static>
               <>
-                {WORKSPACE_SIDEBAR_STATIC_PINNED_NAVIGATION_ITEMS_LINKS.map((item, _index) => (
-                  <SidebarItem key={`static_${_index}`} item={item} />
+                {WORKSPACE_SIDEBAR_STATIC_PINNED_NAVIGATION_ITEMS_LINKS.map((item) => (
+                  <SidebarItem key={item.key} item={item} />
                 ))}
-                {sortedNavigationItems.map((item, _index) => (
-                  <SidebarItem key={`dynamic_${_index}`} item={item} />
+                {sortedNavigationItems.map((item) => (
+                  <SidebarItem key={item.key} item={item} />
                 ))}
                 <SidebarNavItem>
                   <button

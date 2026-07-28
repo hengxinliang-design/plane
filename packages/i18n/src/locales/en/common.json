@@ -364,6 +364,7 @@
   "re_generate": "Re-generate",
   "re_generate_key": "Re-generate key",
   "export": "Export",
+  "download": "Download",
   "member": "{count, plural, one{# member} other{# members}}",
   "new_password_must_be_different_from_old_password": "New password must be different from old password",
   "edited": "edited",
@@ -853,7 +854,8 @@
     "csv": {
       "title": "CSV",
       "description": "Export work items to a CSV file.",
-      "short_description": "Export as csv"
+      "short_description": "Export as csv",
+      "download": "Download CSV"
     },
     "excel": {
       "title": "Excel",
@@ -863,7 +865,8 @@
     "xlsx": {
       "title": "Excel",
       "description": "Export work items to a Excel file.",
-      "short_description": "Export as excel"
+      "short_description": "Export as excel",
+      "download": "Download Excel"
     },
     "json": {
       "title": "JSON",

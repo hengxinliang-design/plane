@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 from plane.db.models import User
 from plane.settings.redis import redis_instance
-from plane.license.models import Instance
+from plane.license.models import Instance, InstanceConfiguration
 
 
 @pytest.fixture
@@ -33,6 +33,14 @@ def setup_instance(db):
             "last_checked_at": timezone.now(),
             "is_setup_done": True,
         },
+    )
+    InstanceConfiguration.objects.update_or_create(
+        key="EMAIL_HOST",
+        defaults={"value": "test-smtp", "category": "SMTP"},
+    )
+    InstanceConfiguration.objects.update_or_create(
+        key="ENABLE_MAGIC_LINK_LOGIN",
+        defaults={"value": "1", "category": "AUTHENTICATION"},
     )
     return instance
 

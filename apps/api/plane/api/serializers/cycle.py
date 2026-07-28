@@ -59,14 +59,18 @@ class CycleCreateSerializer(BaseSerializer):
         ]
 
     def validate(self, data):
-        project_id = self.initial_data.get("project_id") or (
-            self.instance.project_id if self.instance and hasattr(self.instance, "project_id") else None
+        project = self.context.get("project")
+        project_id = (
+            self.initial_data.get("project_id")
+            or (self.instance.project_id if self.instance and hasattr(self.instance, "project_id") else None)
+            or (project.id if project else None)
         )
 
         if not project_id:
             raise serializers.ValidationError("Project ID is required")
 
-        project = Project.objects.filter(id=project_id).first()
+        if project is None:
+            project = Project.objects.filter(id=project_id).first()
         if not project:
             raise serializers.ValidationError("Project not found")
         if not project.cycle_view:

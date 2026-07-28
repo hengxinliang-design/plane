@@ -27,6 +27,7 @@ class ExportIssuesEndpoint(BaseAPIView):
         provider = request.data.get("provider", False)
         multiple = request.data.get("multiple", False)
         project_ids = request.data.get("project", [])
+        module_id = request.data.get("module")
 
         if provider in ["csv", "xlsx", "json"]:
             if not project_ids:
@@ -44,6 +45,7 @@ class ExportIssuesEndpoint(BaseAPIView):
                 initiated_by=request.user,
                 provider=provider,
                 type="issue_exports",
+                filters={"module_id": module_id} if module_id else None,
             )
 
             issue_export_task.delay(
@@ -53,6 +55,7 @@ class ExportIssuesEndpoint(BaseAPIView):
                 token_id=exporter.token,
                 multiple=multiple,
                 slug=slug,
+                module_id=module_id,
             )
             return Response(
                 {"message": "Once the export is ready you will be able to download it"},
